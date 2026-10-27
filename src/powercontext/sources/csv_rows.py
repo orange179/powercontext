@@ -19,10 +19,9 @@ from __future__ import annotations
 import csv
 import io
 import json
-from typing import Literal
 from urllib.parse import quote
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from powercontext.limits import MAX_SOURCE_ID_LENGTH
 from powercontext.sources import AdapterSourceDefinition, TextEvidence
@@ -49,8 +48,8 @@ class CSVRowInput(BaseModel):
     document_id: str
     primary_key: str
     primary_key_value: str
-    columns: tuple[str, ...]
-    values: tuple[str, ...]
+    columns: list[str]
+    values: list[str]
 
 
 class CSVRowSource(Source):
@@ -62,8 +61,8 @@ class CSVRowSource(Source):
     document_id: str
     primary_key: str
     primary_key_value: str
-    columns: tuple[str, ...]
-    values: tuple[str, ...]
+    columns: list[str]
+    values: list[str]
 
 
 def parse_csv_document(value: CSVDocumentInput) -> tuple[CSVRowInput, ...]:
@@ -74,8 +73,8 @@ def parse_csv_document(value: CSVDocumentInput) -> tuple[CSVRowInput, ...]:
     """
     if not value.document_id or value.document_id != value.document_id.strip():
         raise ValueError("document_id must be non-empty without surrounding whitespace")
-    if not value.primary_key:
-        raise ValueError("primary_key must be non-empty")
+    if not value.primary_key or value.primary_key != value.primary_key.strip():
+        raise ValueError("primary_key must be non-empty without surrounding whitespace")
 
     try:
         text = value.content.decode("utf-8")
@@ -135,8 +134,8 @@ def parse_csv_document(value: CSVDocumentInput) -> tuple[CSVRowInput, ...]:
                 document_id=value.document_id,
                 primary_key=value.primary_key,
                 primary_key_value=pk_value,
-                columns=tuple(header),
-                values=tuple(row),
+                columns=list(header),
+                values=list(row),
             )
         )
 
