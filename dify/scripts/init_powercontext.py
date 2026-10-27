@@ -13,10 +13,12 @@ from __future__ import annotations
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 
 BASE_URL = os.environ.get("POWERCONTEXT_URL", "http://127.0.0.1:8000").rstrip("/")
-SCOPE_KEY = "grudge-npc"
+SCOPE_KEY = "grudge-npc-v1"
+SCOPE_TITLE = "账本先生的账本"
 TOKEN = os.environ.get("POWERCONTEXT_TOKEN")
 
 SEED_GRUDGES = [
@@ -40,15 +42,35 @@ def post(path: str, payload: dict) -> dict:
         return json.load(response)
 
 
+def get(path: str) -> dict:
+    headers = {}
+    if TOKEN:
+        headers["Authorization"] = f"Bearer {TOKEN}"
+    request = urllib.request.Request(f"{BASE_URL}{path}", headers=headers, method="GET")
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return json.load(response)
+
+
+def create_scope() -> dict:
+    payload = {
+        "title": SCOPE_TITLE,
+        "summary": "会记仇的山羊 NPC 的长期记忆",
+        "idempotency_key": SCOPE_KEY,
+    }
+    try:
+        return post("/v1/scopes", payload)
+    except urllib.error.HTTPError as error:
+        if error.code != 409:
+            raise
+        # 同一 idempotency_key 已被旧 payload 占用时，按标题找回已有 scope。
+        for item in get("/v1/scopes")["items"]:
+            if item.get("title") == SCOPE_TITLE:
+                return item
+        raise
+
+
 def main() -> int:
-    scope = post(
-        "/v1/scopes",
-        {
-            "title": "账本先生的账本",
-            "summary": "会记仇的山羊 NPC 的长期记忆",
-            "idempotency_key": SCOPE_KEY,
-        },
-    )
+    scope = create_scope()
     scope_id = scope["scope_id"]
     print(f"scope_id = {scope_id}")
 

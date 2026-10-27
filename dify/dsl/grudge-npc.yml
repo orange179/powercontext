@@ -13,12 +13,6 @@ workflow:
   features:
     file_upload:
       enabled: false
-      fileUploadConfig: {}
-      image:
-        enabled: false
-        number_limits: 3
-        transfer_methods: []
-      number_limits: 3
     opening_statement: '村口的老山羊抬起眼皮，慢吞吞地翻开发黄的账本：「又是你。上次的账，我可都记着。」'
     retriever_resource:
       enabled: true
@@ -34,8 +28,6 @@ workflow:
       enabled: true
     text_to_speech:
       enabled: false
-      language: ''
-      voice: ''
   graph:
     edges:
       - data:
@@ -227,7 +219,8 @@ workflow:
       - data:
           code: |-
             def main(player: str, query: str, reply: str) -> dict:
-                text = f"玩家「{player}」说：{query}。我回它：{reply}"
+                clean_query = query.strip().rstrip("。！？，、；")
+                text = f"玩家「{player}」说：{clean_query}。我回它：{reply}"
                 text = " ".join(text.split())
                 return {"text": text[:1500]}
           code_language: python3
