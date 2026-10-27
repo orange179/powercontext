@@ -19,6 +19,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+from typing import Literal
 from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
