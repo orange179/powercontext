@@ -60,10 +60,23 @@ from powercontext.builtin.sources.skill_usage import (
     SkillUsageSource,
     SkillUsageSourceAdapter,
 )
+from powercontext.sources.csv_rows import (
+    CSV_ROW_SOURCE_ADAPTER,
+    CSV_ROW_SOURCE_DEFINITION,
+    CSV_ROW_SOURCE_NAME,
+    CSVDocumentInput,
+    CSVRowInput,
+    CSVRowSource,
+    CSVRowSourceAdapter,
+    CSVRowTextEvidenceProjection,
+    csv_row_source_id,
+    parse_csv_document,
+)
 from powercontext.sources import TEXT_EVIDENCE_PROJECTION_KEY, SourceDefinitionRegistry, TextEvidence
 
 BUILTIN_SOURCE_REGISTRY = SourceDefinitionRegistry((
     CONTENT_SOURCE_DEFINITION,
+    CSV_ROW_SOURCE_DEFINITION,
     EXTERNAL_SKILL_SNAPSHOT_SOURCE_DEFINITION,
     SKILL_PACKAGE_UPLOAD_SOURCE_DEFINITION,
     SKILL_USAGE_SOURCE_DEFINITION,
@@ -109,4 +122,14 @@ __all__ = [
     "SourceJournalEntry",
     "TextEvidence",
     "validate_scope_id",
+    "CSV_ROW_SOURCE_ADAPTER",
+    "CSV_ROW_SOURCE_DEFINITION",
+    "CSV_ROW_SOURCE_NAME",
+    "CSVDocumentInput",
+    "CSVRowInput",
+    "CSVRowSource",
+    "CSVRowSourceAdapter",
+    "CSVRowTextEvidenceProjection",
+    "csv_row_source_id",
+    "parse_csv_document",
 ]
