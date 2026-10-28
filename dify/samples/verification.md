@@ -4,9 +4,11 @@
 
 ## 0. 前置条件
 
-1. 已按 `dify/README.md` 第 4 节启动 PowerContext、执行 `init_powercontext.py`、导入 DSL 并填好 `scope_id`。
+1. 已按 `dify/README.md` 第 4 节启动 PowerContext、跑起 cloudflared 隧道、执行 `init_powercontext.py`、
+   导入 DSL 并把隧道地址与 `scope_id` 填进两个 HTTP 节点。
 2. 聊天开始前，账本里有 3 条初始旧账（铜币、掀摊子、欠三文钱）。
 3. 把 `init_powercontext.py` 输出的 `scope_id` 记下来，后面取证要用。
+4. 隧道域名每次重启都会变；若中途换了域名，需回 Dify 改两个节点的 URL 再继续，否则节点会报连接失败。
 
 ## 1. 初始状态
 
@@ -59,6 +61,7 @@ python dify/scripts/inspect_memory.py <scope_id> 番茄
 | --- | --- | --- |
 | Dify 对话截图（第 1、2 轮） | 显示 NPC 点出旧账细节 | `evidence/01-dialogue.png` |
 | Dify 节点执行详情 | 展示「召回旧账」「记下新账」两个 HTTP 节点返回 200 | `evidence/02-nodes.png` |
+| 公网可达性 | 隧道域名 + `/health/live` 返回 `{"status":"ok"}`，证明 Dify 云版能访问到本地 PowerContext | `evidence/02b-tunnel.txt` |
 | 跨会话截图 | 新会话仍能复述前情 | `evidence/03-cross-session.png` |
 | PowerContext 召回输出 | 第 4 步命令的终端输出 | `evidence/04-recall.txt` |
 | PowerContext 服务日志 | 启动与请求记录 | `evidence/05-server-log.txt` |
