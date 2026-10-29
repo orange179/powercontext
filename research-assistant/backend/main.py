@@ -16,9 +16,18 @@ from datetime import datetime
 import hashlib
 import os
 
-# 实际导入 seekdb 和 PowerContext
-from pylibseekdb import SeekDBClient as RealSeekDBClient
-from powercontext.client.client import PowerContextClient as RealPowerContextClient
+# 尝试导入真实的 seekdb 和 PowerContext 客户端
+try:
+    from pylibseekdb import SeekDBClient as RealSeekDBClient
+    SEEKDB_AVAILABLE = True
+except ImportError:
+    SEEKDB_AVAILABLE = False
+
+try:
+    from powercontext.client.client import PowerContextClient as RealPowerContextClient
+    POWERCONTEXT_AVAILABLE = True
+except ImportError:
+    POWERCONTEXT_AVAILABLE = False
 
 app = FastAPI(title="Research Assistant API", version="1.0.0")
 
@@ -152,18 +161,35 @@ class PowerContextClient:
         return []
 
 
-# 初始化客户端（使用真实 seekdb 和 PowerContext）
-seekdb_client = RealSeekDBClient(
-    host=os.getenv("SEEKDB_HOST", "localhost"),
-    port=int(os.getenv("SEEKDB_PORT", 3306)),
-    database=os.getenv("SEEKDB_DATABASE", "research_db"),
-    api_key=os.getenv("SEEKDB_API_KEY")
-)
+# 初始化客户端（优先使用真实客户端，失败时降级到模拟实现）
+def init_seekdb_client():
+    if SEEKDB_AVAILABLE:
+        try:
+            client = RealSeekDBClient(
+                host=os.getenv("SEEKDB_HOST", "localhost"),
+                port=int(os.getenv("SEEKDB_PORT", 3306)),
+                database=os.getenv("SEEKDB_DATABASE", "research_db"),
+                api_key=os.getenv("SEEKDB_API_KEY")
+            )
+            return client
+        except Exception as e:
+            print(f"seekdb 连接失败，使用模拟实现：{e}")
+    return MockSeekDBClient()
 
-powercontext_client = RealPowerContextClient(
-    api_url=os.getenv("POWERCONTEXT_API_URL", "http://localhost:8080"),
-    api_key=os.getenv("POWERCONTEXT_API_KEY")
-)
+def init_powercontext_client():
+    if POWERCONTEXT_AVAILABLE:
+        try:
+            client = RealPowerContextClient(
+                api_url=os.getenv("POWERCONTEXT_API_URL", "http://localhost:8080"),
+                api_key=os.getenv("POWERCONTEXT_API_KEY")
+            )
+            return client
+        except Exception as e:
+            print(f"PowerContext 连接失败，使用模拟实现：{e}")
+    return MockPowerContextClient()
+
+seekdb_client = init_seekdb_client()
+powercontext_client = init_powercontext_client()
 
 # 创建文献集合
 seekdb_client.create_collection("papers", {
