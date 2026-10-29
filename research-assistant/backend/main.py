@@ -1,20 +1,6 @@
 """Research Assistant Backend - 文献整理与知识检索助手
 
 集成 seekdb（语义检索）和 PowerContext（用户记忆）的智能文献管理工具。
-
-seekdb 集成说明：
-    实际生产环境使用 pylibseekdb 包：
-    from pylibseekdb import SeekDBClient
-    client = SeekDBClient(host="...", port=3306, database="...", api_key="...")
-    results = client.vector_search(collection="papers", query_vector=embed(query), top_k=5)
-    results = client.hybrid_search(collection="papers", vector_query=..., text_query=..., filter={...})
-
-PowerContext 集成说明：
-    实际生产环境使用 powercontext 包：
-    from powercontext.client import PowerContextClient
-    client = PowerContextClient(api_url="...", api_key="...")
-    client.set_memory(user_id="...", key="preferences", value={...})
-    memory = client.get_memory(user_id="...", key="preferences")
 """
 
 from fastapi import FastAPI, HTTPException
@@ -29,6 +15,10 @@ import json
 from datetime import datetime
 import hashlib
 import os
+
+# 实际导入 seekdb 和 PowerContext
+from pylibseekdb import SeekDBClient as RealSeekDBClient
+from powercontext.client.client import PowerContextClient as RealPowerContextClient
 
 app = FastAPI(title="Research Assistant API", version="1.0.0")
 
@@ -162,9 +152,18 @@ class PowerContextClient:
         return []
 
 
-# 初始化客户端
-seekdb_client = SeekDBClient()
-powercontext_client = PowerContextClient()
+# 初始化客户端（使用真实 seekdb 和 PowerContext）
+seekdb_client = RealSeekDBClient(
+    host=os.getenv("SEEKDB_HOST", "localhost"),
+    port=int(os.getenv("SEEKDB_PORT", 3306)),
+    database=os.getenv("SEEKDB_DATABASE", "research_db"),
+    api_key=os.getenv("SEEKDB_API_KEY")
+)
+
+powercontext_client = RealPowerContextClient(
+    api_url=os.getenv("POWERCONTEXT_API_URL", "http://localhost:8080"),
+    api_key=os.getenv("POWERCONTEXT_API_KEY")
+)
 
 # 创建文献集合
 seekdb_client.create_collection("papers", {
