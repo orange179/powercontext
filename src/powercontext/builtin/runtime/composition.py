@@ -156,6 +156,7 @@ from powercontext.builtin.runtime.readiness import (
 )
 from powercontext.builtin.runtime.recall_sufficiency import RecallSufficiencyPolicy
 from powercontext.builtin.runtime.relational import RelationalContexts
+from powercontext.builtin.runtime.source_lifecycle import SourceLifecycleStore
 from powercontext.builtin.runtime.topic_memory_processing import (
     TopicMemoryWorkerSpec,
     run_topic_memory_worker,
@@ -641,6 +642,7 @@ async def open_builtin_runtime(
                 statistics_service=contexts.statistics,
                 record_service=contexts.records,
                 prompt_service=contexts.prompts,
+                lifecycle_store=SourceLifecycleStore(contexts.database),
                 recall_token_estimator=contexts.estimate_recall_tokens,
                 recall_effort_sink=recall_effort_sink,
                 decision_model=configured_decision,
