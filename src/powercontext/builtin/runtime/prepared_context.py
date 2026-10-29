@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import json
+import math
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from itertools import chain
@@ -56,6 +58,8 @@ class _PreparedContextEntry:
     citation: dict[str, object]
     content: str
     truncated: bool
+    start: int | None = None
+    end: int | None = None
 
 
 @dataclass(frozen=True)
@@ -100,12 +104,16 @@ class PreparedContextBuild:
     **not** a field here: ``ScopedContextApplication._prepare`` returns ``build.context`` and
     discards the rest, so such a field would have no production observer. The trace is
     delivered through the Runtime's optional ``RecallEffortSink`` instead.
+
+    ``fragments`` is filled only when the request enabled ``evidence_selection``; it is the
+    literal-span projection of ``origins`` and is empty on every other path.
     """
 
     context: PreparedContext
     origins: tuple[PreparedContextOrigin, ...]
     omissions: PreparedContextOmissions = PreparedContextOmissions()
     code_origins: tuple[CodeEvidenceRef, ...] = ()
+    fragments: tuple[PreparedContextFragment, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -118,6 +126,20 @@ class MemoryEntryAddress:
 
 
 PreparedContextOrigin = MemoryCitation | ArtifactRef | MemoryEntryAddress | ArtifactAddress
+
+
+@dataclass(frozen=True)
+class PreparedContextFragment:
+    """One literal span of a Memory entry chosen as query-relevant evidence.
+
+    ``text`` is always ``entry.text[start:end]`` of the cited entry version: fragments are
+    read-outs of the original body, never rewrites, translations, or generated summaries.
+    """
+
+    address: MemoryEntryAddress
+    start: int
+    end: int
+    text: str
 
 
 @dataclass(frozen=True)
@@ -211,6 +233,13 @@ class PreparedContextBuilder:
         profile_candidates: Sequence[PreparedProfileCandidate] = (),
         code_candidates: Sequence[PreparedCodeCandidate] = (),
     ) -> PreparedContextBuild:
+        if request.evidence_selection:
+            return self._build_selection_result(
+                request=request,
+                current_scope_id=current_scope_id,
+                memory_candidates=memory_candidates,
+            )
+
         if request.include_code:
 
             def historical(history_request: PrepareContextRequest, entries: int) -> PreparedContextBuild:
@@ -235,7 +264,7 @@ class PreparedContextBuilder:
         if sum(len(candidates.hits) for candidates in experience_candidates) > self.experience_candidate_limit:
             raise PreparedContextInvariantError("experience-candidate-limit")
 
-        content, origins, omissions = self._select_entries(
+        content, origins, fragments, omissions = self._select_entries(
             request=request,
             current_scope_id=current_scope_id,
             memory_candidates=memory_candidates,
@@ -254,6 +283,7 @@ class PreparedContextBuilder:
             context=PreparedContext(status="ready", content=content, content_bytes=content_bytes),
             origins=origins,
             omissions=omissions,
+            fragments=fragments,
         )
 
     def probe_budget(
@@ -274,10 +304,10 @@ class PreparedContextBuilder:
 
         Pure and side-effect free: no I/O, no persistence, nothing reported to any sink, and
         the same inputs as :meth:`build_scopes_result` are guaranteed to yield the same
-        counters because both go through :meth:`_select_entries`.
+        counters because both go through :meth:`_select_for_request`.
         """
 
-        content, origins, omissions = self._select_entries(
+        content, origins, _fragments, omissions = self._select_for_request(
             request=request,
             current_scope_id=current_scope_id,
             memory_candidates=memory_candidates,
@@ -294,6 +324,31 @@ class PreparedContextBuilder:
             unused_bytes=max(0, request.max_bytes - content_bytes),
         )
 
+    def _select_for_request(
+        self,
+        *,
+        request: PrepareContextRequest,
+        current_scope_id: str | None,
+        memory_candidates: Sequence[PreparedMemoryCandidates],
+        experience_candidates: Sequence[PreparedExperienceCandidates],
+        profile_candidates: Sequence[PreparedProfileCandidate],
+        topic_memory_hits: Sequence[TopicMemorySearchHit],
+    ) -> tuple[
+        str | None, tuple[PreparedContextOrigin, ...], tuple[PreparedContextFragment, ...], PreparedContextOmissions
+    ]:
+        """Dispatch to the selection mode the request asked for."""
+
+        if request.evidence_selection:
+            return self._select_fragments(request=request, memory_candidates=memory_candidates)
+        return self._select_entries(
+            request=request,
+            current_scope_id=current_scope_id,
+            memory_candidates=memory_candidates,
+            experience_candidates=experience_candidates,
+            profile_candidates=profile_candidates,
+            topic_memory_hits=topic_memory_hits,
+        )
+
     def _select_entries(
         self,
         *,
@@ -303,13 +358,15 @@ class PreparedContextBuilder:
         topic_memory_hits: Sequence[TopicMemorySearchHit],
         experience_candidates: Sequence[PreparedExperienceCandidates],
         profile_candidates: Sequence[PreparedProfileCandidate],
-    ) -> tuple[str | None, tuple[PreparedContextOrigin, ...], PreparedContextOmissions]:
+    ) -> tuple[
+        str | None, tuple[PreparedContextOrigin, ...], tuple[PreparedContextFragment, ...], PreparedContextOmissions
+    ]:
         """Run one complete pure selection pass and render it.
 
-        Returns ``(content, origins, omissions)``; ``content`` is ``None`` exactly when nothing
-        was selected, which is the empty-result case for both paths. This is the single
-        selection path shared by :meth:`build_scopes_result` and :meth:`probe_budget`, so the
-        probe's counters always describe the selection the build would actually perform.
+        Returns ``(content, origins, fragments, omissions)``; ``content`` is ``None`` exactly
+        when nothing was selected, which is the empty-result case for both paths. This is the
+        single selection path shared by :meth:`build_scopes_result` and :meth:`probe_budget`,
+        so the probe's counters always describe the selection the build would actually perform.
         """
 
         if request.assembly is not None:
@@ -344,8 +401,8 @@ class PreparedContextBuilder:
         )[: self.experience_entry_limit]
         entries, omissions = self._fit_entries(request, memory_entries, topic_memory_entries, experience_entries)
         if not entries:
-            return None, (), omissions
-        return _render(entries), tuple(entry.origin for entry in entries), omissions
+            return None, (), (), omissions
+        return _render(entries), tuple(entry.origin for entry in entries), (), omissions
 
     def _select_text(
         self,
@@ -356,7 +413,9 @@ class PreparedContextBuilder:
         experience_candidates: Sequence[PreparedExperienceCandidates],
         profile_candidates: Sequence[PreparedProfileCandidate],
         topic_memory_hits: Sequence[TopicMemorySearchHit],
-    ) -> tuple[str | None, tuple[PreparedContextOrigin, ...], PreparedContextOmissions]:
+    ) -> tuple[
+        str | None, tuple[PreparedContextOrigin, ...], tuple[PreparedContextFragment, ...], PreparedContextOmissions
+    ]:
         assembly = request.assembly
         if assembly is None:
             raise PreparedContextInvariantError("text-assembly-missing")
@@ -429,9 +488,97 @@ class PreparedContextBuilder:
             dropped_no_fitting_truncation=dropped_no_fitting_truncation,
         )
         if not included:
-            return None, (), omissions
+            return None, (), (), omissions
         content = render_context_text(included, assembly)
-        return content, tuple(origins), omissions
+        return content, tuple(origins), (), omissions
+
+    def _build_selection_result(
+        self,
+        *,
+        request: PrepareContextRequest,
+        current_scope_id: str | None,
+        memory_candidates: Sequence[PreparedMemoryCandidates],
+    ) -> PreparedContextBuild:
+        if sum(len(candidates.hits) for candidates in memory_candidates) > self.memory_candidate_limit:
+            raise PreparedContextInvariantError("memory-candidate-limit")
+        content, origins, fragments, omissions = self._select_fragments(
+            request=request,
+            memory_candidates=memory_candidates,
+        )
+        if content is None:
+            return PreparedContextBuild(context=self.empty(), origins=(), omissions=omissions)
+        content_bytes = len(content.encode("utf-8"))
+        if content_bytes > request.max_bytes:
+            raise PreparedContextInvariantError("output-budget")
+        return PreparedContextBuild(
+            context=PreparedContext(status="ready", content=content, content_bytes=content_bytes),
+            origins=origins,
+            omissions=omissions,
+            fragments=fragments,
+        )
+
+    def _select_fragments(
+        self,
+        *,
+        request: PrepareContextRequest,
+        memory_candidates: Sequence[PreparedMemoryCandidates],
+    ) -> tuple[
+        str | None,
+        tuple[PreparedContextOrigin, ...],
+        tuple[PreparedContextFragment, ...],
+        PreparedContextOmissions,
+    ]:
+        """Choose literal sentence runs whose terms answer ``request.query``.
+
+        Selection is organised per candidate entry, not per sentence. Every emitted fragment
+        starts from that entry's best-matching sentence and then grows outward over adjacent
+        sentences, so each entry contributes one contiguous, re-readable slice of its original
+        body. Growing instead of scattering matters because the per-item citation overhead is
+        several hundred bytes: starting a second fragment in the same entry would spend that
+        overhead again and leave less room for original text.
+
+        The number of entries that receive a slice is derived from the budget itself, and the
+        content budget is split with a decay so the best-matching entry receives the largest
+        share while weaker candidates still contribute a hedge.
+        """
+
+        groups = self._fragment_groups(memory_candidates)
+        if not groups:
+            return None, (), (), PreparedContextOmissions()
+        ranked_groups = _ranked_scored_groups(groups, _query_terms(request.query))
+        merged = [region for region in _plan_fragment_regions(ranked_groups, request.max_bytes) if region is not None]
+        if not merged:
+            # Not even one whole sentence fits. Emit the longest literal prefix that does, so
+            # the caller still receives citable original text instead of an empty context.
+            merged = _first_clamped_fragment(ranked_groups, request.max_bytes)
+        else:
+            merged = _top_up_fragments(merged, request.max_bytes)
+        if not merged:
+            return None, (), (), PreparedContextOmissions()
+
+        ordered = sorted(merged, key=lambda span: span.order)
+        entries = tuple(_fragment_entry(span) for span in ordered)
+        fragments = tuple(_fragment_citation(span) for span in ordered)
+        return _render(entries), tuple(entry.origin for entry in entries), fragments, PreparedContextOmissions()
+
+    def _fragment_groups(
+        self,
+        memory_candidates: Sequence[PreparedMemoryCandidates],
+    ) -> tuple[tuple[_FragmentSpan, ...], ...]:
+        """Split every distinct candidate entry into its whole-sentence spans."""
+
+        grouped: dict[tuple[str, str, str], tuple[_FragmentSpan, ...]] = {}
+        order = 0
+        for candidates in memory_candidates:
+            for hit in _citable_hits(candidates):
+                key = (candidates.scope_id, hit.entry_id, hit.entry_version_id)
+                if key in grouped:
+                    continue
+                spans = _sentence_fragments(candidates.scope_id, hit, order)
+                order += len(spans)
+                if spans:
+                    grouped[key] = spans
+        return tuple(grouped.values())
 
     def _profile_entries(self, candidates: Sequence[PreparedProfileCandidate]) -> tuple[_PreparedContextEntry, ...]:
         entries = []
@@ -710,11 +857,12 @@ def _text_item(entry: _PreparedContextEntry) -> ContextTextItem:
 
 
 def _render_entry(entry: _PreparedContextEntry) -> dict[str, object]:
-    rendered: dict[str, object] = {
-        "citation": entry.citation,
-        "content": entry.content,
-        "truncated": entry.truncated,
-    }
+    rendered: dict[str, object] = {"citation": entry.citation, "content": entry.content}
+    if entry.start is None or entry.end is None:
+        rendered["truncated"] = entry.truncated
+    else:
+        rendered["start"] = entry.start
+        rendered["end"] = entry.end
     if entry.kind != "memory":
         rendered["kind"] = entry.kind
     return rendered
@@ -728,3 +876,437 @@ def _truncate_utf8(text: str, byte_budget: int) -> str:
     prefix_budget = byte_budget - len(_ELLIPSIS.encode("utf-8"))
     encoded_prefix = text.encode("utf-8")[:prefix_budget]
     return f"{encoded_prefix.decode('utf-8', errors='ignore')}{_ELLIPSIS}"
+
+
+@dataclass(frozen=True)
+class _FragmentSpan:
+    """One whole-sentence slice of a Memory entry version, ready to score and grow."""
+
+    scope_id: str
+    memory_ref: ArtifactRef
+    entry_id: str
+    entry_version_id: str
+    text: str
+    start: int
+    end: int
+    score: float
+    order: int
+    tokens: frozenset[str] = frozenset()
+
+
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+|[\u4e00-\u9fff]+")
+# Sentence terminators cover Latin stops plus the CJK full stops and question marks, which are
+# written as escapes so the literal never depends on ambiguous full-width glyphs.
+_SENTENCE_ENDS = ".!?\u3002\uff01\uff1f"
+_SENTENCE_CLOSERS = "\"'\u201d\u2019)]}\u00bb"
+_STOPWORD_TEXT = """
+    a about after again against all also an and any are as at be because been before being between both but by
+    can could did do does during each few for from further had has have having he her here hers herself him
+    himself his how however i if in into is it its itself just may me might more most must my myself no nor not
+    now of off on once only or other our ours ourselves out over own same she should so some such than that the
+    their theirs them themselves then there these they this those through to too under until up very was we were
+    what when where which while who whom why will with would you your yours yourself yourselves
+"""
+_STOPWORDS = frozenset(_STOPWORD_TEXT.split())
+
+
+def _tokens(text: str) -> tuple[str, ...]:
+    return tuple(_TOKEN_PATTERN.findall(text.lower()))
+
+
+def _query_terms(query: str) -> frozenset[str]:
+    tokens = _tokens(query)
+    content = frozenset(token for token in tokens if token not in _STOPWORDS)
+    return content if content else frozenset(tokens)
+
+
+def _sentence_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """Split ``text`` into whole-sentence spans that are exact slices of the original."""
+
+    spans: list[tuple[int, int]] = []
+    length = len(text)
+    start = 0
+    for index in range(length):
+        if not _is_sentence_break(text, index):
+            continue
+        spans.append(_trim_span(text, start, index + 1))
+        start = index + 1
+    spans.append(_trim_span(text, start, length))
+    return tuple(span for span in spans if span[1] > span[0])
+
+
+def _is_sentence_break(text: str, index: int) -> bool:
+    char = text[index]
+    if char == "\n":
+        return True
+    if char not in _SENTENCE_ENDS:
+        return False
+    cursor = index + 1
+    while cursor < len(text) and text[cursor] in _SENTENCE_CLOSERS:
+        cursor += 1
+    if cursor >= len(text):
+        return True
+    if not text[cursor].isspace():
+        # Decimal points and dotted abbreviations stay inside their sentence.
+        return False
+    while cursor < len(text) and text[cursor].isspace():
+        cursor += 1
+    if cursor >= len(text):
+        return True
+    following = text[cursor]
+    # A new sentence starts on any character that cannot continue a lowercase Latin word,
+    # which covers capitals, digits, opening punctuation, and non-Latin scripts.
+    return not (following.isascii() and following.islower())
+
+
+def _trim_span(text: str, start: int, end: int) -> tuple[int, int]:
+    while start < end and text[start].isspace():
+        start += 1
+    while end > start and text[end - 1].isspace():
+        end -= 1
+    return start, end
+
+
+def _citable_hits(candidates: PreparedMemoryCandidates) -> tuple[MemoryHit, ...]:
+    """Validate one candidate group and return its deduplicated, citable, non-empty hits."""
+
+    if candidates.hits and candidates.memory_ref is None:
+        raise PreparedContextInvariantError("memory-ref-missing")
+    memory_ref = candidates.memory_ref
+    hits: list[MemoryHit] = []
+    seen: set[tuple[str, str]] = set()
+    for hit in candidates.hits:
+        if hit.memory_ref != memory_ref:
+            raise PreparedContextInvariantError("memory-ref-mismatch")
+        citation_key = (hit.entry_id, hit.entry_version_id)
+        if citation_key in seen:
+            continue
+        seen.add(citation_key)
+        if memory_ref is None:
+            continue
+        if not hit.entry_id.strip() or not hit.entry_version_id.strip() or not hit.text.strip():
+            continue
+        hits.append(hit)
+    return tuple(hits)
+
+
+def _sentence_fragments(scope_id: str, hit: MemoryHit, order: int) -> tuple[_FragmentSpan, ...]:
+    """Project one hit onto its whole-sentence spans, numbering them from ``order``."""
+
+    return tuple(
+        _FragmentSpan(
+            scope_id=scope_id,
+            memory_ref=hit.memory_ref,
+            entry_id=hit.entry_id,
+            entry_version_id=hit.entry_version_id,
+            text=hit.text,
+            start=start,
+            end=end,
+            score=0.0,
+            order=order + offset,
+        )
+        for offset, (start, end) in enumerate(_sentence_spans(hit.text))
+    )
+
+
+def _slot_weights(slots: int) -> tuple[float, ...]:
+    """Split a content budget with a decay, so rank 0 always receives the largest share."""
+
+    raw = tuple(0.6**rank for rank in range(max(slots, 0)))
+    total = sum(raw)
+    return tuple(value / total for value in raw) if total else ()
+
+
+def _ranked_scored_groups(
+    groups: Sequence[Sequence[_FragmentSpan]],
+    terms: frozenset[str],
+) -> tuple[tuple[_FragmentSpan, ...], ...]:
+    """Score every sentence by the IDF weight of the query terms it contains, then rank entries."""
+
+    scored_groups: list[tuple[_FragmentSpan, ...]] = []
+    token_sets: list[frozenset[str]] = []
+    for spans in groups:
+        scored: list[_FragmentSpan] = []
+        for span in spans:
+            tokens = frozenset(_tokens(span.text[span.start : span.end]))
+            token_sets.append(tokens)
+            scored.append(replace(span, tokens=tokens))
+        scored_groups.append(tuple(scored))
+
+    if terms:
+        document_frequency = dict.fromkeys(terms, 0)
+        for tokens in token_sets:
+            for term in terms:
+                if term in tokens:
+                    document_frequency[term] += 1
+        total = len(token_sets)
+        idf = {term: math.log(1.0 + total / (1.0 + document_frequency[term])) for term in terms}
+        scored_groups = [
+            tuple(replace(span, score=sum(idf[term] for term in terms if term in span.tokens)) for span in spans)
+            for spans in scored_groups
+        ]
+
+    return tuple(sorted(scored_groups, key=lambda spans: (-max(span.score for span in spans), spans[0].order)))
+
+
+def _plan_fragment_regions(
+    ranked_groups: Sequence[Sequence[_FragmentSpan]],
+    max_bytes: int,
+) -> tuple[_FragmentSpan | None, ...]:
+    """Assign each of the best-ranked entries one contiguous slice of its own body.
+
+    Planning runs in two phases. Seeding first spreads small slices across as many entries as
+    the budget can afford, because the entry that holds the answer is not always the top-ranked
+    one. Growing then deepens those slices in rank order on a decaying share, so the
+    best-matching entry still ends up with the most original text.
+    """
+
+    if not ranked_groups:
+        return ()
+
+    fixed_bytes = _rendered_bytes(())
+    probe = ranked_groups[0][0]
+    item_overhead = max(1, _fragment_render_bytes((probe,)) - fixed_bytes - _span_bytes(probe))
+    available = max_bytes - fixed_bytes
+    # A slice shorter than this cannot hold a meaningful run of original sentences, so it is
+    # not worth paying a whole entry's citation overhead for.
+    min_share = 120
+    max_slots = (available - min_share) // (item_overhead + min_share) if available > min_share else 0
+    slots = max(1, min(len(ranked_groups), max_slots))
+
+    regions: list[_FragmentSpan | None] = [None] * len(ranked_groups)
+    bounds: dict[int, tuple[int, int]] = {}
+
+    remaining = _seed_regions(ranked_groups, regions, bounds, slots, min_share, max_bytes, fixed_bytes, item_overhead)
+    _grow_regions(ranked_groups, regions, bounds, remaining, max_bytes)
+    return tuple(regions)
+
+
+def _seed_regions(
+    ranked_groups: Sequence[Sequence[_FragmentSpan]],
+    regions: list[_FragmentSpan | None],
+    bounds: dict[int, tuple[int, int]],
+    slots: int,
+    min_share: int,
+    max_bytes: int,
+    fixed_bytes: int,
+    item_overhead: int,
+) -> int:
+    """Give each servable entry its best-matching sentence, reserving room for the rest."""
+
+    remaining = max_bytes - fixed_bytes
+    for rank in range(slots):
+        reserved = (slots - rank - 1) * (item_overhead + min_share)
+        cap = remaining - item_overhead - reserved
+        if cap < min_share:
+            break
+        if not _seed_region(ranked_groups, regions, bounds, rank, cap, max_bytes):
+            continue
+        remaining -= _span_bytes(regions[rank]) + item_overhead
+    return remaining
+
+
+def _grow_regions(
+    ranked_groups: Sequence[Sequence[_FragmentSpan]],
+    regions: list[_FragmentSpan | None],
+    bounds: dict[int, tuple[int, int]],
+    remaining: int,
+    max_bytes: int,
+) -> None:
+    """Deepen the seeded slices in rank order, decaying the share so rank 0 grows most."""
+
+    seeded = [index for index, region in enumerate(regions) if region is not None]
+    pool = max(0, remaining)
+    for position, index in enumerate(seeded):
+        if pool <= 0:
+            return
+        weight = _slot_weights(len(seeded) - position)[0]
+        cap = _span_bytes(regions[index]) + int(pool * weight)
+        before = _region_content_bytes(regions)
+        _grow_region(ranked_groups, regions, bounds, index, cap, max_bytes)
+        pool -= _region_content_bytes(regions) - before
+
+
+def _grow_region(
+    ranked_groups: Sequence[Sequence[_FragmentSpan]],
+    regions: list[_FragmentSpan | None],
+    bounds: dict[int, tuple[int, int]],
+    group_index: int,
+    cap: int,
+    max_bytes: int,
+) -> None:
+    """Give one entry the longest run of adjacent sentences that fits ``cap`` and the budget."""
+
+    spans = ranked_groups[group_index]
+    if group_index not in bounds and not _seed_region(ranked_groups, regions, bounds, group_index, cap, max_bytes):
+        return
+    while True:
+        low, high = bounds[group_index]
+        options = [index for index in (low - 1, high + 1) if 0 <= index < len(spans)]
+        if not options:
+            return
+        options.sort(key=lambda index: (-spans[index].score, index))
+        if not _grow_once(spans, regions, bounds, group_index, options, cap, max_bytes):
+            return
+
+
+def _seed_region(
+    ranked_groups: Sequence[Sequence[_FragmentSpan]],
+    regions: list[_FragmentSpan | None],
+    bounds: dict[int, tuple[int, int]],
+    group_index: int,
+    cap: int,
+    max_bytes: int,
+) -> bool:
+    """Start one entry's slice at its best sentence that fits ``cap``; report success.
+
+    A sentence far weaker than the entry's own best match is not accepted as a fallback: the
+    citation overhead is worth paying only for evidence the query actually asked for.
+    """
+
+    spans = ranked_groups[group_index]
+    threshold = max(span.score for span in spans) * 0.5
+    for seed in sorted(range(len(spans)), key=lambda index: (-spans[index].score, index)):
+        if spans[seed].score < threshold:
+            return False
+        if _span_bytes(spans[seed]) > cap:
+            continue
+        trial = list(regions)
+        trial[group_index] = spans[seed]
+        if _render_regions(trial) > max_bytes:
+            continue
+        regions[group_index] = spans[seed]
+        bounds[group_index] = (seed, seed)
+        return True
+    return False
+
+
+def _grow_once(
+    spans: Sequence[_FragmentSpan],
+    regions: list[_FragmentSpan | None],
+    bounds: dict[int, tuple[int, int]],
+    group_index: int,
+    options: Sequence[int],
+    cap: int,
+    max_bytes: int,
+) -> bool:
+    """Extend one entry's slice by the best adjacent sentence that still fits; report success."""
+
+    low, high = bounds[group_index]
+    for index in options:
+        new_low, new_high = min(low, index), max(high, index)
+        grown = replace(spans[low], start=spans[new_low].start, end=spans[new_high].end)
+        if _span_bytes(grown) > cap:
+            continue
+        trial = list(regions)
+        trial[group_index] = grown
+        if _render_regions(trial) > max_bytes:
+            continue
+        regions[group_index] = grown
+        bounds[group_index] = (new_low, new_high)
+        return True
+    return False
+
+
+def _render_regions(values: Sequence[_FragmentSpan | None]) -> int:
+    return _fragment_render_bytes(tuple(value for value in values if value is not None))
+
+
+def _first_clamped_fragment(
+    ranked_groups: Sequence[Sequence[_FragmentSpan]],
+    max_bytes: int,
+) -> list[_FragmentSpan]:
+    for spans in ranked_groups:
+        for span in sorted(spans, key=lambda item: -item.score):
+            clamped = _clamp_fragment(span, max_bytes)
+            if clamped is not None:
+                return [clamped]
+    return []
+
+
+def _top_up_fragments(fragments: Sequence[_FragmentSpan], max_bytes: int) -> list[_FragmentSpan]:
+    """Spend any budget the sentence-aligned plan left unused on literal continuation text.
+
+    Whole sentences keep each slice readable, but a run often cannot grow to exactly its share
+    because the next sentence overshoots. Extending the tail with the longest literal prefix of
+    the following text keeps the output inside ``max_bytes`` without ever wasting the caller's
+    room for evidence.
+    """
+
+    extended = list(fragments)
+    for index, fragment in enumerate(extended):
+        if fragment.end >= len(fragment.text):
+            continue
+        best = fragment
+        lower, upper = fragment.end, len(fragment.text)
+        while lower <= upper:
+            middle = (lower + upper) // 2
+            candidate = replace(fragment, end=middle)
+            trial = list(extended)
+            trial[index] = candidate
+            if _render_regions(trial) <= max_bytes:
+                best = candidate
+                lower = middle + 1
+            else:
+                upper = middle - 1
+        extended[index] = best
+    return extended
+
+
+def _span_bytes(span: _FragmentSpan) -> int:
+    return len(span.text[span.start : span.end].encode("utf-8"))
+
+
+def _fragment_citation(span: _FragmentSpan) -> PreparedContextFragment:
+    return PreparedContextFragment(
+        address=MemoryEntryAddress(
+            memory=ArtifactAddress(scope_id=span.scope_id, artifact=span.memory_ref),
+            entry_id=span.entry_id,
+            entry_version_id=span.entry_version_id,
+        ),
+        start=span.start,
+        end=span.end,
+        text=span.text[span.start : span.end],
+    )
+
+
+def _region_content_bytes(regions: Sequence[_FragmentSpan | None]) -> int:
+    return sum(_span_bytes(span) for span in regions if span is not None)
+
+
+def _fragment_entry(span: _FragmentSpan) -> _PreparedContextEntry:
+    memory = ArtifactAddress(scope_id=span.scope_id, artifact=span.memory_ref)
+    return _PreparedContextEntry(
+        origin=MemoryEntryAddress(memory=memory, entry_id=span.entry_id, entry_version_id=span.entry_version_id),
+        kind="memory",
+        citation={
+            "scope_id": span.scope_id,
+            "memory_ref": span.memory_ref.model_dump(mode="json"),
+            "entry_id": span.entry_id,
+            "entry_version_id": span.entry_version_id,
+        },
+        content=span.text[span.start : span.end],
+        truncated=False,
+        start=span.start,
+        end=span.end,
+    )
+
+
+def _fragment_render_bytes(spans: Sequence[_FragmentSpan]) -> int:
+    return _rendered_bytes(tuple(_fragment_entry(span) for span in spans))
+
+
+def _clamp_fragment(span: _FragmentSpan, max_bytes: int) -> _FragmentSpan | None:
+    """Shorten one span to the longest literal prefix that fits ``max_bytes``."""
+
+    lower, upper = span.start + 1, span.end
+    best: _FragmentSpan | None = None
+    while lower <= upper:
+        middle = (lower + upper) // 2
+        candidate = replace(span, end=middle)
+        if _fragment_render_bytes((candidate,)) <= max_bytes:
+            best = candidate
+            lower = middle + 1
+        else:
+            upper = middle - 1
+    return best
