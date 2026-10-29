@@ -1,6 +1,6 @@
 """Research Assistant Backend - 文献整理与知识检索助手
 
-集成 seekdb（语义检索）和 PowerContext（用户记忆）的智能文献管理工具。
+实际集成 seekdb（语义检索）和 PowerContext（用户记忆）的智能文献管理工具。
 """
 
 from fastapi import FastAPI, HTTPException
@@ -16,6 +16,21 @@ from datetime import datetime
 import hashlib
 import os
 
+# 实际导入 seekdb 和 PowerContext 客户端
+try:
+    from pylibseekdb import SeekDBClient
+    SEEKDB_AVAILABLE = True
+except ImportError:
+    SEEKDB_AVAILABLE = False
+    print("Warning: pylibseekdb not installed, using mock client")
+
+try:
+    from powercontext.client import PowerContextClient
+    POWERCONTEXT_AVAILABLE = True
+except ImportError:
+    POWERCONTEXT_AVAILABLE = False
+    print("Warning: powercontext not installed, using mock client")
+
 app = FastAPI(title="Research Assistant API", version="1.0.0")
 
 app.add_middleware(
@@ -28,62 +43,57 @@ app.add_middleware(
 
 
 # ============================================================================
-# seekdb 集成 - 语义检索客户端
+# 客户端初始化
 # ============================================================================
 
-class SeekDBClient:
-    """seekdb 向量检索客户端（演示用模拟实现）
-    
-    实际使用时替换为：
-    from seekdb import SeekDBClient
-    
-    client = SeekDBClient(
-        host=os.getenv("SEEKDB_HOST", "localhost"),
-        port=int(os.getenv("SEEKDB_PORT", 3306)),
-        database=os.getenv("SEEKDB_DATABASE", "research_db"),
-        api_key=os.getenv("SEEKDB_API_KEY")
-    )
-    """
+def get_seekdb_client():
+    """初始化 seekdb 客户端"""
+    if SEEKDB_AVAILABLE:
+        return SeekDBClient(
+            host=os.getenv("SEEKDB_HOST", "localhost"),
+            port=int(os.getenv("SEEKDB_PORT", 3306)),
+            database=os.getenv("SEEKDB_DATABASE", "research_db"),
+            api_key=os.getenv("SEEKDB_API_KEY")
+        )
+    return MockSeekDBClient()
+
+
+def get_powercontext_client():
+    """初始化 PowerContext 客户端"""
+    if POWERCONTEXT_AVAILABLE:
+        return PowerContextClient(
+            api_url=os.getenv("POWERCONTEXT_API_URL", "http://localhost:8080"),
+            api_key=os.getenv("POWERCONTEXT_API_KEY")
+        )
+    return MockPowerContextClient()
+
+
+# ============================================================================
+# Mock 客户端（当真实包不可用时）
+# ============================================================================
+
+class MockSeekDBClient:
+    """seekdb 模拟客户端（仅用于演示）"""
     
     def __init__(self):
-        self.documents = []
         self.collections = {}
     
     def create_collection(self, name: str, schema: Dict[str, Any]):
-        """创建文档集合"""
-        self.collections[name] = {
-            "schema": schema,
-            "documents": []
-        }
+        self.collections[name] = {"schema": schema, "documents": []}
     
     def insert_document(self, collection: str, doc: Dict[str, Any]):
-        """插入文档到集合"""
         if collection not in self.collections:
             self.create_collection(collection, {})
         self.collections[collection]["documents"].append(doc)
     
     def vector_search(self, collection: str, query: str, top_k: int = 5) -> List[Dict]:
-        """向量语义检索（模拟实现）
-        
-        实际 seekdb API:
-        results = client.vector_search(
-            collection="papers",
-            query_vector=embed(query),
-            top_k=top_k,
-            filter={"tags": {"$in": ["NLP"]}}
-        )
-        """
         if collection not in self.collections:
             return []
-        
         query_lower = query.lower()
         results = []
-        
         for doc in self.collections[collection]["documents"]:
             score = 0.0
             matched_fields = []
-            
-            # 模拟向量相似度计算
             if query_lower in doc.get("title", "").lower():
                 score += 0.4
                 matched_fields.append("title")
@@ -93,128 +103,59 @@ class SeekDBClient:
             if query_lower in doc.get("keywords", "").lower():
                 score += 0.2
                 matched_fields.append("keywords")
-            
             for tag in doc.get("tags", []):
                 if query_lower in tag.lower():
                     score += 0.1
                     matched_fields.append(f"tag:{tag}")
-            
             if score > 0:
-                results.append({
-                    "document": doc,
-                    "score": score,
-                    "matched_fields": matched_fields
-                })
-        
+                results.append({"document": doc, "score": score, "matched_fields": matched_fields})
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
     
     def hybrid_search(self, collection: str, query: str, filters: Dict = None, top_k: int = 5) -> List[Dict]:
-        """混合检索（向量 + 全文 + 结构化过滤）
-        
-        实际 seekdb API:
-        results = client.hybrid_search(
-            collection="papers",
-            vector_query=embed(query),
-            text_query=query,
-            filter={"tags": {"$in": ["NLP", "深度学习"]}},
-            top_k=top_k
-        )
-        """
-        results = self.vector_search(collection, query, top_k)
-        
-        if filters:
-            filtered = []
-            for result in results:
-                doc = result["document"]
-                match = True
-                for key, value in filters.items():
-                    if key == "tags" and "$in" in value:
-                        if not any(tag in value["$in"] for tag in doc.get("tags", [])):
-                            match = False
-                if match:
-                    filtered.append(result)
-            return filtered
-        
-        return results
+        return self.vector_search(collection, query, top_k)
 
 
-# ============================================================================
-# PowerContext 集成 - 用户记忆客户端
-# ============================================================================
-
-class PowerContextClient:
-    """PowerContext 用户记忆客户端（演示用模拟实现）
-    
-    实际使用时替换为：
-    from powercontext import PowerContextClient
-    
-    client = PowerContextClient(
-        api_url=os.getenv("POWERCONTEXT_API_URL", "http://localhost:8080"),
-        api_key=os.getenv("POWERCONTEXT_API_KEY")
-    )
-    """
+class MockPowerContextClient:
+    """PowerContext 模拟客户端（仅用于演示）"""
     
     def __init__(self):
         self.memories = {}
     
     def set_memory(self, user_id: str, key: str, value: Any):
-        """保存用户记忆
-        
-        实际 PowerContext API:
-        client.set_memory(
-            user_id=user_id,
-            key=key,
-            value=value,
-            metadata={"source": "research-assistant"}
-        )
-        """
         if user_id not in self.memories:
             self.memories[user_id] = {}
-        self.memories[user_id][key] = {
-            "value": value,
-            "updated_at": datetime.now().isoformat()
-        }
+        self.memories[user_id][key] = {"value": value, "updated_at": datetime.now().isoformat()}
     
     def get_memory(self, user_id: str, key: str) -> Optional[Any]:
-        """读取用户记忆
-        
-        实际 PowerContext API:
-        memory = client.get_memory(user_id=user_id, key=key)
-        return memory.value
-        """
         if user_id in self.memories and key in self.memories[user_id]:
             return self.memories[user_id][key]["value"]
         return None
     
     def delete_memory(self, user_id: str, key: str):
-        """删除用户记忆"""
         if user_id in self.memories and key in self.memories[user_id]:
             del self.memories[user_id][key]
     
     def list_memories(self, user_id: str) -> List[str]:
-        """列出用户所有记忆键"""
         if user_id in self.memories:
             return list(self.memories[user_id].keys())
         return []
 
 
-# ============================================================================
-# 初始化客户端实例
-# ============================================================================
-
-seekdb_client = SeekDBClient()
-powercontext_client = PowerContextClient()
+# 初始化客户端
+seekdb_client = get_seekdb_client()
+powercontext_client = get_powercontext_client()
 
 # 创建文献集合
-seekdb_client.create_collection("papers", {
-    "title": "string",
-    "authors": "string",
-    "abstract": "string",
-    "keywords": "string",
-    "tags": "list[string]",
-    "created_at": "datetime"
-})
+if hasattr(seekdb_client, 'create_collection'):
+    seekdb_client.create_collection("papers", {
+        "title": "string",
+        "authors": "string",
+        "abstract": "string",
+        "keywords": "string",
+        "tags": "list[string]",
+        "created_at": "datetime"
+    })
 
 
 # ============================================================================
@@ -261,8 +202,8 @@ async def root():
         "message": "Research Assistant API",
         "version": "1.0.0",
         "integrations": {
-            "seekdb": "语义检索服务",
-            "powercontext": "用户记忆服务"
+            "seekdb": "connected" if SEEKDB_AVAILABLE else "mock",
+            "powercontext": "connected" if POWERCONTEXT_AVAILABLE else "mock"
         }
     }
 
@@ -330,7 +271,6 @@ async def get_user_preferences(user_id: str):
     prefs = powercontext_client.get_memory(user_id, "preferences")
     
     if prefs is None:
-        # 初始化默认偏好
         default_prefs = UserPreference(user_id=user_id)
         powercontext_client.set_memory(user_id, "preferences", default_prefs.dict())
         return default_prefs
@@ -371,7 +311,6 @@ async def get_recommendations(user_id: str):
     if not pref_data.preferred_tags:
         return {"recommendations": [], "message": "请先选择感兴趣的研究标签"}
     
-    # 使用 seekdb 检索与用户偏好匹配的文献
     recommendations = []
     all_docs = seekdb_client.vector_search("papers", "", top_k=1000)
     
@@ -383,7 +322,7 @@ async def get_recommendations(user_id: str):
             recommendations.append({
                 "document": doc,
                 "relevance_score": relevance_score,
-                "reason": f"匹配 {relevance_score} 个偏好标签：{[tag for tag in doc.get('tags', []) if tag in pref_data.preferred_tags]}"
+                "reason": f"匹配 {relevance_score} 个偏好标签"
             })
     
     recommendations.sort(key=lambda x: x["relevance_score"], reverse=True)
