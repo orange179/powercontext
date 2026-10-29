@@ -218,9 +218,7 @@ research-assistant/
 
 本项目已通过 **Qoder Sites** 发布：
 
-🔗 **访问地址**：[https://your-site.qoder.site](https://your-site.qoder.site)
-
-（发布后替换为实际链接）
+🔗 **访问地址**：[https://research-assistant-vxnv854uztp.qoder.zone](https://research-assistant-vxnv854uztp.qoder.zone)
 
 ## 📝 开发记录
 
@@ -235,9 +233,7 @@ research-assistant/
 4. **集成调试**：Qoder 协助 seekdb 和 PowerContext 集成
 5. **部署发布**：通过 Qoder Sites 一键发布
 
-**Qoder 账号 UID**：`your-uid-here`
-
-（提交时替换为实际 UID）
+**Qoder 账号 UID**：`nick4039665807`
 
 ## 🤝 贡献
 

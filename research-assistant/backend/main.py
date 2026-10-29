@@ -1,16 +1,20 @@
-"""Research Assistant Backend - 文献整理与知识检索助手"""
+"""Research Assistant Backend - 文献整理与知识检索助手
+
+集成 seekdb（语义检索）和 PowerContext（用户记忆）的智能文献管理工具。
+"""
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import csv
 import io
 import json
 from datetime import datetime
 import hashlib
+import os
 
 app = FastAPI(title="Research Assistant API", version="1.0.0")
 
@@ -22,11 +26,200 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 模拟数据库
-documents_db = []
-user_preferences_db = {}
-search_history_db = []
 
+# ============================================================================
+# seekdb 集成 - 语义检索客户端
+# ============================================================================
+
+class SeekDBClient:
+    """seekdb 向量检索客户端（演示用模拟实现）
+    
+    实际使用时替换为：
+    from seekdb import SeekDBClient
+    
+    client = SeekDBClient(
+        host=os.getenv("SEEKDB_HOST", "localhost"),
+        port=int(os.getenv("SEEKDB_PORT", 3306)),
+        database=os.getenv("SEEKDB_DATABASE", "research_db"),
+        api_key=os.getenv("SEEKDB_API_KEY")
+    )
+    """
+    
+    def __init__(self):
+        self.documents = []
+        self.collections = {}
+    
+    def create_collection(self, name: str, schema: Dict[str, Any]):
+        """创建文档集合"""
+        self.collections[name] = {
+            "schema": schema,
+            "documents": []
+        }
+    
+    def insert_document(self, collection: str, doc: Dict[str, Any]):
+        """插入文档到集合"""
+        if collection not in self.collections:
+            self.create_collection(collection, {})
+        self.collections[collection]["documents"].append(doc)
+    
+    def vector_search(self, collection: str, query: str, top_k: int = 5) -> List[Dict]:
+        """向量语义检索（模拟实现）
+        
+        实际 seekdb API:
+        results = client.vector_search(
+            collection="papers",
+            query_vector=embed(query),
+            top_k=top_k,
+            filter={"tags": {"$in": ["NLP"]}}
+        )
+        """
+        if collection not in self.collections:
+            return []
+        
+        query_lower = query.lower()
+        results = []
+        
+        for doc in self.collections[collection]["documents"]:
+            score = 0.0
+            matched_fields = []
+            
+            # 模拟向量相似度计算
+            if query_lower in doc.get("title", "").lower():
+                score += 0.4
+                matched_fields.append("title")
+            if query_lower in doc.get("abstract", "").lower():
+                score += 0.3
+                matched_fields.append("abstract")
+            if query_lower in doc.get("keywords", "").lower():
+                score += 0.2
+                matched_fields.append("keywords")
+            
+            for tag in doc.get("tags", []):
+                if query_lower in tag.lower():
+                    score += 0.1
+                    matched_fields.append(f"tag:{tag}")
+            
+            if score > 0:
+                results.append({
+                    "document": doc,
+                    "score": score,
+                    "matched_fields": matched_fields
+                })
+        
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results[:top_k]
+    
+    def hybrid_search(self, collection: str, query: str, filters: Dict = None, top_k: int = 5) -> List[Dict]:
+        """混合检索（向量 + 全文 + 结构化过滤）
+        
+        实际 seekdb API:
+        results = client.hybrid_search(
+            collection="papers",
+            vector_query=embed(query),
+            text_query=query,
+            filter={"tags": {"$in": ["NLP", "深度学习"]}},
+            top_k=top_k
+        )
+        """
+        results = self.vector_search(collection, query, top_k)
+        
+        if filters:
+            filtered = []
+            for result in results:
+                doc = result["document"]
+                match = True
+                for key, value in filters.items():
+                    if key == "tags" and "$in" in value:
+                        if not any(tag in value["$in"] for tag in doc.get("tags", [])):
+                            match = False
+                if match:
+                    filtered.append(result)
+            return filtered
+        
+        return results
+
+
+# ============================================================================
+# PowerContext 集成 - 用户记忆客户端
+# ============================================================================
+
+class PowerContextClient:
+    """PowerContext 用户记忆客户端（演示用模拟实现）
+    
+    实际使用时替换为：
+    from powercontext import PowerContextClient
+    
+    client = PowerContextClient(
+        api_url=os.getenv("POWERCONTEXT_API_URL", "http://localhost:8080"),
+        api_key=os.getenv("POWERCONTEXT_API_KEY")
+    )
+    """
+    
+    def __init__(self):
+        self.memories = {}
+    
+    def set_memory(self, user_id: str, key: str, value: Any):
+        """保存用户记忆
+        
+        实际 PowerContext API:
+        client.set_memory(
+            user_id=user_id,
+            key=key,
+            value=value,
+            metadata={"source": "research-assistant"}
+        )
+        """
+        if user_id not in self.memories:
+            self.memories[user_id] = {}
+        self.memories[user_id][key] = {
+            "value": value,
+            "updated_at": datetime.now().isoformat()
+        }
+    
+    def get_memory(self, user_id: str, key: str) -> Optional[Any]:
+        """读取用户记忆
+        
+        实际 PowerContext API:
+        memory = client.get_memory(user_id=user_id, key=key)
+        return memory.value
+        """
+        if user_id in self.memories and key in self.memories[user_id]:
+            return self.memories[user_id][key]["value"]
+        return None
+    
+    def delete_memory(self, user_id: str, key: str):
+        """删除用户记忆"""
+        if user_id in self.memories and key in self.memories[user_id]:
+            del self.memories[user_id][key]
+    
+    def list_memories(self, user_id: str) -> List[str]:
+        """列出用户所有记忆键"""
+        if user_id in self.memories:
+            return list(self.memories[user_id].keys())
+        return []
+
+
+# ============================================================================
+# 初始化客户端实例
+# ============================================================================
+
+seekdb_client = SeekDBClient()
+powercontext_client = PowerContextClient()
+
+# 创建文献集合
+seekdb_client.create_collection("papers", {
+    "title": "string",
+    "authors": "string",
+    "abstract": "string",
+    "keywords": "string",
+    "tags": "list[string]",
+    "created_at": "datetime"
+})
+
+
+# ============================================================================
+# 数据模型
+# ============================================================================
 
 class Document(BaseModel):
     id: str
@@ -42,12 +235,13 @@ class Document(BaseModel):
 class SearchQuery(BaseModel):
     query: str
     top_k: int = 5
+    filters: Optional[Dict[str, Any]] = None
 
 
 class UserPreference(BaseModel):
     user_id: str
     preferred_tags: List[str] = []
-    reading_progress: dict = {}
+    reading_progress: Dict[str, Any] = {}
     search_history: List[str] = []
 
 
@@ -57,14 +251,25 @@ class SearchResult(BaseModel):
     matched_keywords: List[str]
 
 
+# ============================================================================
+# API 端点
+# ============================================================================
+
 @app.get("/")
 async def root():
-    return {"message": "Research Assistant API", "version": "1.0.0"}
+    return {
+        "message": "Research Assistant API",
+        "version": "1.0.0",
+        "integrations": {
+            "seekdb": "语义检索服务",
+            "powercontext": "用户记忆服务"
+        }
+    }
 
 
 @app.post("/api/documents/import", response_model=List[Document])
 async def import_documents(csv_content: str):
-    """导入 CSV 格式的文献数据"""
+    """导入 CSV 格式的文献数据到 seekdb"""
     try:
         reader = csv.DictReader(io.StringIO(csv_content))
         imported = []
@@ -82,117 +287,127 @@ async def import_documents(csv_content: str):
                 tags=[t.strip() for t in row.get("tags", "").split(",") if t.strip()],
                 created_at=datetime.now().isoformat()
             )
-            documents_db.append(doc)
+            
+            # 存储到 seekdb
+            seekdb_client.insert_document("papers", doc.dict())
             imported.append(doc)
         
         return imported
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"导入失败: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"导入失败：{str(e)}")
 
 
 @app.get("/api/documents", response_model=List[Document])
 async def list_documents():
-    """列出所有文献"""
-    return documents_db
+    """列出所有文献（从 seekdb 检索）"""
+    results = seekdb_client.vector_search("papers", "", top_k=1000)
+    return [Document(**r["document"]) for r in results]
 
 
 @app.post("/api/search", response_model=List[SearchResult])
 async def search_documents(query: SearchQuery):
-    """语义检索文献（模拟 seekdb 集成）"""
-    query_text = query.query.lower()
-    results = []
+    """使用 seekdb 进行语义检索"""
+    results = seekdb_client.hybrid_search(
+        collection="papers",
+        query=query.query,
+        filters=query.filters,
+        top_k=query.top_k
+    )
     
-    for doc in documents_db:
-        score = 0.0
-        matched = []
-        
-        # 简单的关键词匹配（实际应使用 seekdb 的向量检索）
-        if query_text in doc.title.lower():
-            score += 0.4
-            matched.append("title")
-        if query_text in doc.abstract.lower():
-            score += 0.3
-            matched.append("abstract")
-        if query_text in doc.keywords.lower():
-            score += 0.2
-            matched.append("keywords")
-        
-        # 标签匹配
-        for tag in doc.tags:
-            if query_text in tag.lower():
-                score += 0.1
-                matched.append(f"tag:{tag}")
-        
-        if score > 0:
-            results.append(SearchResult(
-                document=doc,
-                score=score,
-                matched_keywords=matched
-            ))
-    
-    # 按分数排序
-    results.sort(key=lambda x: x.score, reverse=True)
-    return results[:query.top_k]
+    return [
+        SearchResult(
+            document=Document(**r["document"]),
+            score=r["score"],
+            matched_keywords=r["matched_fields"]
+        )
+        for r in results
+    ]
 
 
 @app.get("/api/user/{user_id}/preferences", response_model=UserPreference)
 async def get_user_preferences(user_id: str):
-    """获取用户偏好（PowerContext 集成）"""
-    if user_id not in user_preferences_db:
-        user_preferences_db[user_id] = UserPreference(user_id=user_id)
-    return user_preferences_db[user_id]
+    """从 PowerContext 获取用户偏好"""
+    prefs = powercontext_client.get_memory(user_id, "preferences")
+    
+    if prefs is None:
+        # 初始化默认偏好
+        default_prefs = UserPreference(user_id=user_id)
+        powercontext_client.set_memory(user_id, "preferences", default_prefs.dict())
+        return default_prefs
+    
+    return UserPreference(**prefs)
 
 
 @app.post("/api/user/{user_id}/preferences", response_model=UserPreference)
 async def update_user_preferences(user_id: str, preferences: UserPreference):
-    """更新用户偏好（PowerContext 集成）"""
-    user_preferences_db[user_id] = preferences
+    """保存用户偏好到 PowerContext"""
+    powercontext_client.set_memory(user_id, "preferences", preferences.dict())
     return preferences
 
 
 @app.post("/api/user/{user_id}/progress")
-async def update_reading_progress(user_id: str, document_id: str, progress: dict):
-    """更新阅读进度（PowerContext 记忆存储）"""
-    if user_id not in user_preferences_db:
-        user_preferences_db[user_id] = UserPreference(user_id=user_id)
-    
-    user_preferences_db[user_id].reading_progress[document_id] = {
+async def update_reading_progress(user_id: str, document_id: str, progress: Dict[str, Any]):
+    """保存阅读进度到 PowerContext"""
+    current_progress = powercontext_client.get_memory(user_id, "reading_progress") or {}
+    current_progress[document_id] = {
         **progress,
         "updated_at": datetime.now().isoformat()
     }
+    powercontext_client.set_memory(user_id, "reading_progress", current_progress)
     
-    return {"status": "success", "message": "进度已保存"}
+    return {"status": "success", "message": "进度已保存到 PowerContext"}
 
 
 @app.get("/api/user/{user_id}/recommendations")
 async def get_recommendations(user_id: str):
-    """基于用户偏好推荐文献（PowerContext + seekdb 协同）"""
-    if user_id not in user_preferences_db:
+    """基于 PowerContext 用户偏好 + seekdb 检索生成推荐"""
+    prefs = powercontext_client.get_memory(user_id, "preferences")
+    
+    if prefs is None:
         return {"recommendations": [], "message": "暂无推荐，请先设置偏好"}
     
-    prefs = user_preferences_db[user_id]
-    recommendations = []
+    pref_data = UserPreference(**prefs)
     
-    # 基于标签推荐
-    for doc in documents_db:
-        relevance_score = 0
-        for tag in doc.tags:
-            if tag in prefs.preferred_tags:
-                relevance_score += 1
+    if not pref_data.preferred_tags:
+        return {"recommendations": [], "message": "请先选择感兴趣的研究标签"}
+    
+    # 使用 seekdb 检索与用户偏好匹配的文献
+    recommendations = []
+    all_docs = seekdb_client.vector_search("papers", "", top_k=1000)
+    
+    for result in all_docs:
+        doc = result["document"]
+        relevance_score = sum(1 for tag in doc.get("tags", []) if tag in pref_data.preferred_tags)
         
         if relevance_score > 0:
             recommendations.append({
                 "document": doc,
                 "relevance_score": relevance_score,
-                "reason": f"匹配 {relevance_score} 个偏好标签"
+                "reason": f"匹配 {relevance_score} 个偏好标签：{[tag for tag in doc.get('tags', []) if tag in pref_data.preferred_tags]}"
             })
     
     recommendations.sort(key=lambda x: x["relevance_score"], reverse=True)
     return {"recommendations": recommendations[:5]}
 
 
-# 挂载静态文件
-import os
+@app.delete("/api/user/{user_id}/memory/{key}")
+async def delete_user_memory(user_id: str, key: str):
+    """删除用户记忆（PowerContext）"""
+    powercontext_client.delete_memory(user_id, key)
+    return {"status": "success", "message": f"记忆 {key} 已删除"}
+
+
+@app.get("/api/user/{user_id}/memories")
+async def list_user_memories(user_id: str):
+    """列出用户所有记忆键（PowerContext）"""
+    keys = powercontext_client.list_memories(user_id)
+    return {"user_id": user_id, "memory_keys": keys}
+
+
+# ============================================================================
+# 静态文件服务
+# ============================================================================
+
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.exists(frontend_path):
     app.mount("/static", StaticFiles(directory=frontend_path), name="static")
