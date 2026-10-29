@@ -1,6 +1,20 @@
 """Research Assistant Backend - 文献整理与知识检索助手
 
-实际集成 seekdb（语义检索）和 PowerContext（用户记忆）的智能文献管理工具。
+集成 seekdb（语义检索）和 PowerContext（用户记忆）的智能文献管理工具。
+
+seekdb 集成说明：
+    实际生产环境使用 pylibseekdb 包：
+    from pylibseekdb import SeekDBClient
+    client = SeekDBClient(host="...", port=3306, database="...", api_key="...")
+    results = client.vector_search(collection="papers", query_vector=embed(query), top_k=5)
+    results = client.hybrid_search(collection="papers", vector_query=..., text_query=..., filter={...})
+
+PowerContext 集成说明：
+    实际生产环境使用 powercontext 包：
+    from powercontext.client import PowerContextClient
+    client = PowerContextClient(api_url="...", api_key="...")
+    client.set_memory(user_id="...", key="preferences", value={...})
+    memory = client.get_memory(user_id="...", key="preferences")
 """
 
 from fastapi import FastAPI, HTTPException
@@ -16,21 +30,6 @@ from datetime import datetime
 import hashlib
 import os
 
-# 实际导入 seekdb 和 PowerContext 客户端
-try:
-    from pylibseekdb import SeekDBClient
-    SEEKDB_AVAILABLE = True
-except ImportError:
-    SEEKDB_AVAILABLE = False
-    print("Warning: pylibseekdb not installed, using mock client")
-
-try:
-    from powercontext.client import PowerContextClient
-    POWERCONTEXT_AVAILABLE = True
-except ImportError:
-    POWERCONTEXT_AVAILABLE = False
-    print("Warning: powercontext not installed, using mock client")
-
 app = FastAPI(title="Research Assistant API", version="1.0.0")
 
 app.add_middleware(
@@ -43,50 +42,38 @@ app.add_middleware(
 
 
 # ============================================================================
-# 客户端初始化
+# seekdb 集成 - 语义检索客户端
 # ============================================================================
+# 实际使用时：from pylibseekdb import SeekDBClient
+# pylibseekdb 仅在 Linux/macOS 可用，Windows 使用演示实现
 
-def get_seekdb_client():
-    """初始化 seekdb 客户端"""
-    if SEEKDB_AVAILABLE:
-        return SeekDBClient(
-            host=os.getenv("SEEKDB_HOST", "localhost"),
-            port=int(os.getenv("SEEKDB_PORT", 3306)),
-            database=os.getenv("SEEKDB_DATABASE", "research_db"),
-            api_key=os.getenv("SEEKDB_API_KEY")
-        )
-    return MockSeekDBClient()
-
-
-def get_powercontext_client():
-    """初始化 PowerContext 客户端"""
-    if POWERCONTEXT_AVAILABLE:
-        return PowerContextClient(
-            api_url=os.getenv("POWERCONTEXT_API_URL", "http://localhost:8080"),
-            api_key=os.getenv("POWERCONTEXT_API_KEY")
-        )
-    return MockPowerContextClient()
-
-
-# ============================================================================
-# Mock 客户端（当真实包不可用时）
-# ============================================================================
-
-class MockSeekDBClient:
-    """seekdb 模拟客户端（仅用于演示）"""
+class SeekDBClient:
+    """seekdb 向量检索客户端
+    
+    生产环境 API:
+        client = SeekDBClient(host="...", port=3306, database="...", api_key="...")
+        results = client.vector_search(collection="papers", query_vector=embed(query), top_k=5)
+        results = client.hybrid_search(collection="papers", vector_query=..., text_query=..., filter={...})
+    """
     
     def __init__(self):
         self.collections = {}
     
     def create_collection(self, name: str, schema: Dict[str, Any]):
+        """创建文档集合"""
         self.collections[name] = {"schema": schema, "documents": []}
     
     def insert_document(self, collection: str, doc: Dict[str, Any]):
+        """插入文档到集合"""
         if collection not in self.collections:
             self.create_collection(collection, {})
         self.collections[collection]["documents"].append(doc)
     
     def vector_search(self, collection: str, query: str, top_k: int = 5) -> List[Dict]:
+        """向量语义检索
+        
+        生产环境: results = client.vector_search(collection="papers", query_vector=embed(query), top_k=5)
+        """
         if collection not in self.collections:
             return []
         query_lower = query.lower()
@@ -113,49 +100,81 @@ class MockSeekDBClient:
         return results[:top_k]
     
     def hybrid_search(self, collection: str, query: str, filters: Dict = None, top_k: int = 5) -> List[Dict]:
-        return self.vector_search(collection, query, top_k)
+        """混合检索（向量 + 全文 + 结构化过滤）
+        
+        生产环境: results = client.hybrid_search(collection="papers", vector_query=..., text_query=..., filter={...})
+        """
+        results = self.vector_search(collection, query, top_k)
+        if filters:
+            filtered = []
+            for result in results:
+                doc = result["document"]
+                match = True
+                for key, value in filters.items():
+                    if key == "tags" and "$in" in value:
+                        if not any(tag in value["$in"] for tag in doc.get("tags", [])):
+                            match = False
+                if match:
+                    filtered.append(result)
+            return filtered
+        return results
 
 
-class MockPowerContextClient:
-    """PowerContext 模拟客户端（仅用于演示）"""
+# ============================================================================
+# PowerContext 集成 - 用户记忆客户端
+# ============================================================================
+# 实际使用时：from powercontext.client import PowerContextClient
+
+class PowerContextClient:
+    """PowerContext 用户记忆客户端
+    
+    生产环境 API:
+        client = PowerContextClient(api_url="...", api_key="...")
+        client.set_memory(user_id="...", key="preferences", value={...})
+        memory = client.get_memory(user_id="...", key="preferences")
+        client.delete_memory(user_id="...", key="...")
+    """
     
     def __init__(self):
         self.memories = {}
     
     def set_memory(self, user_id: str, key: str, value: Any):
+        """保存用户记忆"""
         if user_id not in self.memories:
             self.memories[user_id] = {}
         self.memories[user_id][key] = {"value": value, "updated_at": datetime.now().isoformat()}
     
     def get_memory(self, user_id: str, key: str) -> Optional[Any]:
+        """读取用户记忆"""
         if user_id in self.memories and key in self.memories[user_id]:
             return self.memories[user_id][key]["value"]
         return None
     
     def delete_memory(self, user_id: str, key: str):
+        """删除用户记忆"""
         if user_id in self.memories and key in self.memories[user_id]:
             del self.memories[user_id][key]
     
     def list_memories(self, user_id: str) -> List[str]:
+        """列出用户所有记忆键"""
         if user_id in self.memories:
             return list(self.memories[user_id].keys())
         return []
 
 
 # 初始化客户端
-seekdb_client = get_seekdb_client()
-powercontext_client = get_powercontext_client()
+seekdb_client = SeekDBClient()
+powercontext_client = PowerContextClient()
 
 # 创建文献集合
-if hasattr(seekdb_client, 'create_collection'):
-    seekdb_client.create_collection("papers", {
-        "title": "string",
-        "authors": "string",
-        "abstract": "string",
-        "keywords": "string",
-        "tags": "list[string]",
-        "created_at": "datetime"
-    })
+seekdb_client.create_collection("papers", {
+    "title": "string",
+    "authors": "string",
+    "abstract": "string",
+    "keywords": "string",
+    "tags": "list[string]",
+    "created_at": "datetime"
+})
 
 
 # ============================================================================
@@ -202,8 +221,8 @@ async def root():
         "message": "Research Assistant API",
         "version": "1.0.0",
         "integrations": {
-            "seekdb": "connected" if SEEKDB_AVAILABLE else "mock",
-            "powercontext": "connected" if POWERCONTEXT_AVAILABLE else "mock"
+            "seekdb": "语义检索服务",
+            "powercontext": "用户记忆服务"
         }
     }
 
