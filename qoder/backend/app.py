@@ -62,6 +62,7 @@ def index():
 
 @app.route("/api/health")
 def health():
+    _init()
     return jsonify({
         "status": "ok",
         "seekdb_available": seekdb_service.is_seekdb_available(),
@@ -209,8 +210,9 @@ def import_sample():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    _init()
     mode = seekdb_service.get_seekdb_mode()
     print(f"\n  ResearchFlow - 科研文献智能检索助手")
-    print(f"  seekdb mode: {mode} (will initialize on first data request)")
+    print(f"  seekdb mode: {mode}")
     print(f"  Running at http://localhost:{FLASK_PORT}\n")
     app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)

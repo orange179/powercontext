@@ -32,7 +32,6 @@ _seekdb_available = False
 _seekdb_mode_actual = "uninitialized"
 _client = None
 _collection = None
-_initialized = False
 
 _paper_cache: dict[str, dict] = {}
 
@@ -137,39 +136,30 @@ def _reconstruct_paper(pid: str, meta: dict, doc_text: str) -> dict:
 
 
 def init_db():
-    global _seekdb_mode_actual, _initialized
-    if _initialized:
-        return _seekdb_available
-    
+    global _seekdb_mode_actual
     if SEEKDB_MODE == "simulated":
         _seekdb_mode_actual = "simulated"
-        _initialized = True
         print("[seekdb] Simulated mode (forced by config)")
         return False
     if SEEKDB_MODE == "embedded":
         ok = _try_init_embedded()
         if ok:
             _load_cache_from_seekdb()
-        _initialized = True
         return ok
     if SEEKDB_MODE == "remote":
         ok = _try_init_remote()
         if ok:
             _load_cache_from_seekdb()
-        _initialized = True
         return ok
 
     if _try_init_embedded():
         _load_cache_from_seekdb()
-        _initialized = True
         return True
     if sys.platform == "win32" and _try_init_remote():
         _load_cache_from_seekdb()
-        _initialized = True
         return True
 
     _seekdb_mode_actual = "simulated"
-    _initialized = True
     print("[seekdb] Falling back to simulated mode")
     return False
 
