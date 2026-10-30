@@ -97,6 +97,7 @@ from powercontext.builtin.persistence.processing_migration import (
     bootstrap_processing_schema,
 )
 from powercontext.builtin.persistence.scope_search_schema import ensure_scope_search_schema
+from powercontext.builtin.persistence.seekdb.memory_index import SeekDBMemoryHybridIndex
 from powercontext.builtin.persistence.seekdb.profile import SeekDBConfig, SeekDBProfile
 from powercontext.builtin.persistence.skill_distribution_schema import ensure_skill_distribution_schema
 from powercontext.builtin.persistence.sqlite.experience_index import SQLiteExperienceFTSIndex
@@ -126,7 +127,13 @@ from powercontext.builtin.runtime.artifact_processing import (
     ArtifactProcessingSupervisors,
     SpawnArtifactProcessingWorkerLauncher,
 )
-from powercontext.builtin.runtime.config import BuiltinConfig, ExternalSkillsConfig, InferenceConfig, RuntimeConfig
+from powercontext.builtin.runtime.config import (
+    BuiltinConfig,
+    DatabaseConfig,
+    ExternalSkillsConfig,
+    InferenceConfig,
+    RuntimeConfig,
+)
 from powercontext.builtin.runtime.decision_model import (
     DECISION_INSTRUCTIONS,
     DecisionInput,
@@ -860,6 +867,25 @@ async def _open_artifact_processing_supervisor(
         yield ArtifactProcessingSupervisors(tuple(supervisors))
 
 
+def _memory_search_indexes(
+    database: DatabaseConfig,
+    embedding_model: EmbeddingModel | None,
+) -> list[MemoryIndex]:
+    """Choose the Memory projections this database can serve natively."""
+
+    if isinstance(database, SeekDBConfig):
+        # seekdb answers both candidate channels of one hybrid search in a single statement.
+        return (
+            [SeekDBMemoryHybridIndex(embedding_model.profile)]
+            if embedding_model is not None
+            else [OceanBaseMemoryFTSIndex()]
+        )
+    indexes: list[MemoryIndex] = [OceanBaseMemoryFTSIndex()]
+    if embedding_model is not None:
+        indexes.append(OceanBaseMemoryVectorIndex(embedding_model.profile))
+    return indexes
+
+
 @asynccontextmanager
 async def open_builtin_contexts(
     config: BuiltinConfig,
@@ -967,10 +993,7 @@ async def open_builtin_contexts(
                 await contexts.aclose_usage_recorder()
         return
     experience_index = OceanBaseExperienceFTSIndex()
-    indexes = [OceanBaseMemoryFTSIndex()]
-    if embedding_model is not None:
-        indexes.append(OceanBaseMemoryVectorIndex(embedding_model.profile))
-    index = CompositeMemoryIndex(*indexes)
+    index = CompositeMemoryIndex(*_memory_search_indexes(database, embedding_model))
     topic_indexes: list[TopicMemoryIndex] = [OceanBaseTopicMemoryFTSIndex()]
     if embedding_model is not None:
         topic_indexes.append(OceanBaseTopicMemoryVectorIndex(embedding_model.profile))
