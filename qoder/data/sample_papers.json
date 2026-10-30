@@ -1,0 +1,112 @@
+[
+  {
+    "id": "paper-001",
+    "title": "OceanBase seekdb: An AI-Native Search Database for Agent Memory",
+    "abstract": "We present seekdb, an AI-native search database that unifies vector search, full-text search, and structured query processing in a single engine. seekdb achieves 1523 QPS for streaming write+search with P99 latency under 1.1x overhead. The system uses a Change Stream-based async index pipeline to decouple DML from index building, enabling real-time search over freshly written data.",
+    "content": "This paper introduces seekdb, a novel database system designed specifically for AI agent workloads. Traditional vector databases struggle with the streaming write patterns typical of agent memory systems. seekdb addresses this through three key innovations: (1) a Change Stream-based async index pipeline that decouples writes from index construction, (2) native support for hybrid search combining vector similarity, full-text matching, and structured filters in a single SQL query, and (3) Copy-on-Write sandboxing via FORK DATABASE for safe agent experimentation. The system is compatible with the MySQL protocol, enabling seamless integration with existing tools and frameworks like LangChain and LlamaIndex. Our evaluation shows that seekdb achieves 22x throughput improvement over previous versions while maintaining P99 latency stability.",
+    "authors": ["OceanBase Team"],
+    "year": 2026,
+    "tags": ["database", "AI", "vector search", "agent memory"],
+    "source": "https://github.com/oceanbase/seekdb",
+    "reading_status": "read"
+  },
+  {
+    "id": "paper-002",
+    "title": "PowerContext: Context Management for Multi-Agent Systems",
+    "abstract": "PowerContext is an open-source context service for AI agents that provides cross-session and cross-agent memory management. It supports HTTP API, MCP protocol, and Python SDK for integration. The system enables agents to maintain persistent context across conversations, share knowledge between agents, and manage project-level memory with fine-grained access control.",
+    "content": "Modern AI agents operate across multiple sessions and often need to collaborate with other agents. PowerContext addresses the challenge of context management through a layered memory architecture: (1) Episodic memory captures specific interactions and events, (2) Semantic memory stores extracted facts and knowledge, (3) Procedural memory maintains learned workflows and preferences. The system integrates with seekdb for persistent storage, leveraging vector search for semantic memory retrieval and structured queries for access control. PowerContext supports multiple integration patterns including REST API, MCP (Model Context Protocol), and a native Python SDK. We demonstrate its effectiveness in multi-agent coding scenarios where context handoff between agents reduces redundant information gathering by 73%.",
+    "authors": ["OceanBase Team"],
+    "year": 2026,
+    "tags": ["AI agents", "context management", "memory", "multi-agent"],
+    "source": "https://github.com/oceanbase/powercontext",
+    "reading_status": "read"
+  },
+  {
+    "id": "paper-003",
+    "title": "Retrieval-Augmented Generation for Scientific Literature: A Survey",
+    "abstract": "Retrieval-Augmented Generation (RAG) has emerged as a promising approach for grounding large language models in domain-specific knowledge. This survey reviews recent advances in RAG systems for scientific literature, covering retrieval methods, knowledge integration strategies, and evaluation frameworks. We identify key challenges in multi-document reasoning, citation-aware retrieval, and long-context handling.",
+    "content": "Scientific literature presents unique challenges for RAG systems. Unlike general web text, research papers have complex structures including abstracts, methodology sections, experimental results, and citations. Effective retrieval must consider: (1) Semantic similarity at the passage level, requiring dense vector representations that capture technical concepts, (2) Keyword precision for specific terms, model names, and dataset references, best handled by sparse retrieval methods like BM25, (3) Structural context, where the section containing a passage affects its relevance. Hybrid retrieval systems that combine vector search with full-text matching consistently outperform single-method approaches. We survey 47 papers published between 2023-2026 and find that the most effective systems use learned re-ranking over initial retrieval results, with vector+keyword hybrid recall achieving 15-20% improvement over vector-only baselines. The survey also covers evaluation methodologies, noting that domain-specific benchmarks are crucial for measuring real-world effectiveness.",
+    "authors": ["Wei Zhang", "Maria Garcia", "James Chen"],
+    "year": 2025,
+    "tags": ["RAG", "survey", "scientific literature", "information retrieval"],
+    "source": "arXiv:2501.12345",
+    "reading_status": "reading"
+  },
+  {
+    "id": "paper-004",
+    "title": "HNSW Index Optimization for High-Dimensional Vector Search",
+    "abstract": "Hierarchical Navigable Small World (HNSW) graphs have become the de facto standard for approximate nearest neighbor search in high-dimensional spaces. We present optimization techniques that improve recall by 8% while reducing memory usage by 35% compared to standard HNSW implementations. Our approach uses adaptive layer selection and quantization-aware graph construction.",
+    "content": "Vector search is a core component of modern AI systems, enabling semantic retrieval over embedding spaces. HNSW indexes build a multi-layer graph where each node connects to semantically similar neighbors at multiple resolution levels. Our optimizations target three bottlenecks: (1) Layer assignment: instead of the standard exponential decay, we use a learned policy that considers local point density, (2) Edge selection: we introduce a diversity-aware pruning strategy that maintains graph connectivity while removing redundant edges, (3) Quantization: product quantization is applied during graph construction rather than as a post-processing step, ensuring that neighbor selection considers quantization error. Experiments on SIFT-128d, GIST-960d, and text embedding spaces (384d, 768d, 1536d) show consistent improvements. The system integrates with seekdb's vector index infrastructure, supporting both IVF and HNSW index types with automatic selection based on dataset characteristics.",
+    "authors": ["Alex Petrov", "Li Wei"],
+    "year": 2025,
+    "tags": ["vector search", "HNSW", "approximate nearest neighbor", "indexing"],
+    "source": "VLDB 2025",
+    "reading_status": "unread"
+  },
+  {
+    "id": "paper-005",
+    "title": "Full-Text Search in AI Databases: Beyond BM25",
+    "abstract": "Traditional full-text search engines like Elasticsearch use BM25 scoring for relevance ranking. AI-native databases need to integrate full-text capabilities with vector search and structured queries. We present a unified indexing architecture that supports IK-analyzed Chinese text, English stemming, and cross-lingual matching within a single query pipeline.",
+    "content": "Full-text search remains essential for AI applications despite the rise of vector search. Precise matching of technical terms, proper nouns, and specific phrases cannot be reliably handled by approximate vector methods alone. Our unified indexing architecture integrates three retrieval modes: (1) Dense vector retrieval using HNSW or IVF indexes for semantic similarity, (2) Sparse vector retrieval using learned sparse encoders (SPLADE-style) for term importance weighting, (3) Classical full-text retrieval using inverted indexes with language-specific analyzers. The query pipeline combines scores using Reciprocal Rank Fusion (RRF) or weighted linear combination, with optional learned re-ranking. For Chinese text, we use the IK analyzer with fine-grained and coarse-grained modes. The system supports MATCH() AGAINST() syntax compatible with MySQL, enabling seamless migration from traditional databases. Integration with seekdb demonstrates that hybrid retrieval (vector + fulltext + structured filters) in a single SQL query outperforms multi-query fusion approaches by 12-18% in both latency and relevance.",
+    "authors": ["Chen Ming", "Sarah Johnson", "Raj Patel"],
+    "year": 2026,
+    "tags": ["full-text search", "BM25", "Chinese NLP", "hybrid retrieval"],
+    "source": "SIGMOD 2026",
+    "reading_status": "unread"
+  },
+  {
+    "id": "paper-006",
+    "title": "Experiment Tracking with Structured Knowledge Bases",
+    "abstract": "Managing experimental results across research projects requires flexible data models that support both structured metadata and unstructured observations. We present a system built on seekdb that combines JSON document storage with vector embeddings for experiment tracking, enabling semantic search over experimental notes while maintaining queryable metadata.",
+    "content": "Research teams generate diverse experimental data: structured metrics (accuracy, loss, runtime), semi-structured configurations (JSON/YAML), and unstructured observations (lab notes, error analyses). Traditional experiment tracking tools like MLflow handle structured data well but struggle with semantic search over notes. Our system leverages seekdb's multi-model capabilities: (1) Structured experiment metadata stored in relational tables with SQL query support, (2) Configuration documents stored as JSON with JSON path queries, (3) Experimental observations embedded as vectors for semantic similarity search, (4) Full-text indexing over notes for keyword search. A typical query might be: 'Find experiments on image classification tasks where accuracy exceeded 90%, the model used residual connections, and the notes mention overfitting concerns.' This combines structured filters (task=classification, accuracy>0.9), JSON path queries (model.architecture contains 'residual'), and vector/fulltext search over notes (overfitting). The system supports experiment comparison, result aggregation, and automated report generation.",
+    "authors": ["Liu Yang", "Emily Brown"],
+    "year": 2025,
+    "tags": ["experiment tracking", "knowledge base", "JSON", "research tools"],
+    "source": "NeurIPS Workshop 2025",
+    "reading_status": "read"
+  },
+  {
+    "id": "paper-007",
+    "title": "Distributed Database Challenges in the AI Era",
+    "abstract": "The rise of AI workloads presents new challenges for distributed database systems. We discuss the intersection of traditional distributed database requirements (consistency, availability, partition tolerance) with AI-specific needs (vector indexing, real-time embedding, model serving). We propose architectural patterns for AI-native distributed databases.",
+    "content": "Distributed databases have evolved significantly since the CAP theorem was formulated. AI workloads introduce new dimensions: (1) Vector data requires specialized indexing structures (HNSW, IVF) that must be distributed across nodes while maintaining search quality, (2) Embedding generation at query time adds computational load that must be balanced with storage operations, (3) Model serving within the database (AI-in-DB) blurs the line between data processing and inference. We analyze how OceanBase's shared-nothing architecture handles these challenges through: locality-aware vector index partitioning, asynchronous index building via Change Streams, and in-database model execution using AI_EMBED and AI_RERANK SQL functions. The FORK DATABASE feature enables safe experimentation by creating COW snapshots that can be independently modified and later merged. We present benchmarks showing that distributed seekdb maintains sub-100ms p99 latency for hybrid search across 100M+ documents on a 6-node cluster.",
+    "authors": ["Wang Jian", "Michael Lee", "Anna Schmidt"],
+    "year": 2026,
+    "tags": ["distributed database", "AI", "OceanBase", "scalability"],
+    "source": "ICDE 2026",
+    "reading_status": "unread"
+  },
+  {
+    "id": "paper-008",
+    "title": "Literature Review Automation Using Hybrid Retrieval",
+    "abstract": "We present an automated literature review system that combines hybrid retrieval from seekdb with large language models for paper summarization and relationship extraction. The system processes incoming papers, identifies connections to existing work, and generates structured review outlines. User studies show 60% reduction in literature review time.",
+    "content": "Literature review is a time-consuming but essential part of research. Our system automates three key tasks: (1) Paper ingestion: new papers are parsed, embedded, and indexed in seekdb with both vector and full-text indexes, (2) Relationship discovery: when a new paper arrives, the system performs hybrid retrieval to find semantically and lexically related papers, then uses an LLM to identify specific relationships (extends, contradicts, builds upon, uses similar methods), (3) Review generation: the system produces a structured outline organizing related work by theme, with key findings and gaps highlighted. The hybrid retrieval combines vector similarity (capturing conceptual relationships) with full-text matching (capturing specific term overlaps) and structured filters (limiting by year, venue, or research area). User evaluation with 24 PhD students showed: 60% reduction in time to produce a literature review section, 23% improvement in coverage of relevant papers, and 85% user satisfaction with the generated outlines.",
+    "authors": ["Zhang Wei", "Jessica Park", "David Kim"],
+    "year": 2026,
+    "tags": ["literature review", "automation", "hybrid retrieval", "LLM"],
+    "source": "ACL 2026",
+    "reading_status": "reading"
+  },
+  {
+    "id": "paper-009",
+    "title": "Copy-on-Write Sandboxing for Safe AI Agent Experimentation",
+    "abstract": "AI agents frequently need to experiment with data modifications without risking corruption of the primary dataset. We present a Copy-on-Write (COW) sandboxing mechanism built on seekdb's FORK DATABASE primitive that enables instant database snapshots with minimal storage overhead. Agents can freely modify sandbox data and merge successful changes back.",
+    "content": "When AI agents interact with databases, they may need to test hypotheses, explore data transformations, or run what-if analyses. Destructive operations in these scenarios risk corrupting valuable data. Our COW sandboxing mechanism provides isolation through: (1) FORK DATABASE creates an instant snapshot using copy-on-write semantics - no data is physically copied until modified, (2) Agents operate on the fork, performing inserts, updates, and deletes freely, (3) MERGE TABLE integrates successful changes back to the main database with configurable conflict resolution strategies (FAIL, THEIRS, OURS), (4) DROP DATABASE discards failed experiments with zero cleanup cost. Storage overhead is proportional to the amount of modified data, not the database size. Benchmarks show FORK completes in under 100ms for databases up to 1TB. The mechanism is particularly valuable for multi-agent systems where different agents may have conflicting views of the data.",
+    "authors": ["Li Minghui", "Robert Chen"],
+    "year": 2025,
+    "tags": ["sandboxing", "copy-on-write", "AI agents", "database"],
+    "source": "CIDR 2026",
+    "reading_status": "unread"
+  },
+  {
+    "id": "paper-010",
+    "title": "MySQL-Protocol Compatible Vector Extensions: Bridging AI and Traditional Databases",
+    "abstract": "We describe the design and implementation of vector search extensions that maintain full MySQL protocol compatibility. This enables existing MySQL tools, drivers, and ORMs to work with vector data without modification. The VECTOR data type, distance functions, and APPROXIMATE query modifier integrate naturally with standard SQL.",
+    "content": "The proliferation of vector databases has created a fragmented ecosystem where AI applications require specialized tools separate from their existing database infrastructure. We bridge this gap by extending MySQL-compatible databases with native vector search capabilities: (1) VECTOR(n) data type stores fixed-dimension floating-point vectors with compression support, (2) Distance functions (l2_distance, cosine_distance, inner_product) compute similarity in SQL expressions, (3) VECTOR INDEX using HNSW or IVF algorithms with configurable parameters, (4) APPROXIMATE modifier enables index-accelerated search with controllable precision/recall tradeoff. The implementation reuses MySQL's query optimizer and execution engine, adding vector-specific operators for index scan and distance computation. This means existing tools like mysqldump, MySQL Workbench, and Python's pymysql driver work without modification. Hybrid queries combining vector search with full-text MATCH() AGAINST() and structured WHERE clauses execute in a single query plan, avoiding the overhead of multi-query fusion.",
+    "authors": ["OceanBase Team"],
+    "year": 2026,
+    "tags": ["MySQL", "vector database", "SQL extensions", "compatibility"],
+    "source": "https://github.com/oceanbase/seekdb-doc",
+    "reading_status": "read"
+  }
+]

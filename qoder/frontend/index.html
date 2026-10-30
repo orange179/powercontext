@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResearchFlow - 科研文献智能检索助手</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-icon">&#x1F4DA;</span>
+                <h1>ResearchFlow</h1>
+                <span class="subtitle">科研文献智能检索助手</span>
+            </div>
+            <div class="header-status" id="dbStatus">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="tabs">
+        <button class="tab active" data-tab="search">&#x1F50D; 智能检索</button>
+        <button class="tab" data-tab="papers">&#x1F4C4; 文献管理</button>
+        <button class="tab" data-tab="stats">&#x1F4CA; 数据看板</button>
+        <button class="tab" data-tab="about">&#x2139;&#xFE0F; 关于项目</button>
+    </nav>
+
+    <main class="main">
+        <!-- Search Tab -->
+        <section class="tab-content active" id="tab-search">
+            <div class="search-box">
+                <div class="search-input-wrap">
+                    <input type="text" id="searchInput" placeholder="输入关键词或自然语言问题，例如：向量检索与混合搜索..." />
+                    <button id="searchBtn" class="btn-primary">检索</button>
+                </div>
+                <div class="search-options">
+                    <label>检索模式：</label>
+                    <select id="searchMode">
+                        <option value="hybrid" selected>混合检索 (向量 + 关键词)</option>
+                        <option value="vector">语义向量检索</option>
+                        <option value="keyword">关键词全文检索</option>
+                    </select>
+                    <label>返回数量：</label>
+                    <select id="nResults">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
+                <div class="search-filters">
+                    <input type="text" id="filterTag" placeholder="按标签筛选 (如: database)" />
+                    <input type="number" id="filterYearMin" placeholder="起始年份" min="2000" max="2030" />
+                    <input type="number" id="filterYearMax" placeholder="截止年份" min="2000" max="2030" />
+                </div>
+            </div>
+
+            <div id="searchResults" class="results-area">
+                <div class="empty-state">
+                    <p>&#x1F50D;</p>
+                    <p>输入查询开始检索</p>
+                    <p class="hint">支持语义理解、关键词匹配和结构化过滤的混合检索</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Papers Tab -->
+        <section class="tab-content" id="tab-papers">
+            <div class="papers-toolbar">
+                <button id="importSampleBtn" class="btn-secondary">&#x1F4E5; 导入示例数据</button>
+                <button id="addPaperBtn" class="btn-primary">&#x2795; 添加文献</button>
+                <div class="papers-filter">
+                    <select id="paperFilterStatus">
+                        <option value="">全部状态</option>
+                        <option value="unread">未读</option>
+                        <option value="reading">在读</option>
+                        <option value="read">已读</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="papersList" class="papers-list">
+                <div class="empty-state">
+                    <p>&#x1F4C4;</p>
+                    <p>暂无文献</p>
+                    <p class="hint">点击「导入示例数据」快速体验</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Tab -->
+        <section class="tab-content" id="tab-stats">
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotal">-</div>
+                    <div class="stat-label">文献总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statMode">-</div>
+                    <div class="stat-label">seekdb 模式</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statRead">-</div>
+                    <div class="stat-label">已读</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statUnread">-</div>
+                    <div class="stat-label">未读</div>
+                </div>
+            </div>
+            <div class="stats-detail">
+                <div class="stats-section">
+                    <h3>标签分布</h3>
+                    <div id="tagsChart" class="chart-area"></div>
+                </div>
+                <div class="stats-section">
+                    <h3>年份分布</h3>
+                    <div id="yearChart" class="chart-area"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Tab -->
+        <section class="tab-content" id="tab-about">
+            <div class="about-content">
+                <h2>ResearchFlow - 科研文献智能检索助手</h2>
+                <div class="about-section">
+                    <h3>&#x1F3AF; 解决的问题</h3>
+                    <p>科研工作者日常需要管理大量文献，传统关键词搜索难以理解语义，纯向量搜索又无法精确匹配专业术语。ResearchFlow 基于 seekdb 的混合检索能力，将向量语义搜索、全文关键词搜索和结构化条件过滤统一在一条查询中，帮助研究者快速定位相关文献段落。</p>
+                </div>
+                <div class="about-section">
+                    <h3>&#x2699;&#xFE0F; 核心功能</h3>
+                    <ul>
+                        <li><strong>混合检索</strong>：一条查询同时执行向量相似度搜索 + BM25 全文匹配 + 结构化过滤（年份、标签、作者）</li>
+                        <li><strong>文献管理</strong>：导入、浏览、编辑、删除文献记录，支持阅读状态追踪</li>
+                        <li><strong>语义理解</strong>：支持自然语言查询，理解搜索意图而非仅匹配关键词</li>
+                        <li><strong>数据看板</strong>：可视化展示文献库统计信息</li>
+                    </ul>
+                </div>
+                <div class="about-section">
+                    <h3>&#x1F4BE; 技术架构</h3>
+                    <ul>
+                        <li><strong>seekdb</strong>：AI 原生搜索数据库，提供向量索引（HNSW/IVF）、全文索引（IK 分析器）和关系存储</li>
+                        <li><strong>后端</strong>：Python Flask REST API + pyseekdb SDK</li>
+                        <li><strong>前端</strong>：原生 HTML/CSS/JavaScript 单页应用</li>
+                        <li><strong>部署</strong>：seekdb 嵌入式模式（.db 文件）或 Docker/Server 模式</li>
+                    </ul>
+                </div>
+                <div class="about-section">
+                    <h3>&#x1F517; 相关链接</h3>
+                    <ul>
+                        <li><a href="https://github.com/oceanbase/seekdb" target="_blank">seekdb GitHub</a></li>
+                        <li><a href="https://github.com/oceanbase/powercontext" target="_blank">PowerContext GitHub</a></li>
+                        <li><a href="https://github.com/oceanbase/seekdb-doc" target="_blank">seekdb 文档</a></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add Paper Modal -->
+    <div class="modal" id="addPaperModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加文献</h3>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <form id="addPaperForm">
+                <div class="form-group">
+                    <label>标题 *</label>
+                    <input type="text" id="paperTitle" required />
+                </div>
+                <div class="form-group">
+                    <label>摘要</label>
+                    <textarea id="paperAbstract" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>正文内容</label>
+                    <textarea id="paperContent" rows="5"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>作者 (逗号分隔)</label>
+                        <input type="text" id="paperAuthors" placeholder="Author1, Author2" />
+                    </div>
+                    <div class="form-group">
+                        <label>年份</label>
+                        <input type="number" id="paperYear" value="2026" min="1900" max="2030" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>标签 (逗号分隔)</label>
+                        <input type="text" id="paperTags" placeholder="tag1, tag2" />
+                    </div>
+                    <div class="form-group">
+                        <label>来源</label>
+                        <input type="text" id="paperSource" placeholder="URL or venue" />
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary btn-full">添加</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
