@@ -1,12 +1,13 @@
 """
 seekdb integration layer for ResearchFlow.
 
-Supports three modes:
-1. Embedded mode: uses pyseekdb with local .db file (Linux only, requires pylibseekdb)
-2. Remote server mode: connects to seekdb server via host/port (cross-platform)
-3. Simulated mode: in-memory storage with basic text matching (demo/fallback)
+seekdb is the primary data store. All CRUD and search operations go through seekdb.
+An in-memory cache (_paper_cache) is populated from seekdb on startup for fast access.
 
-The mode is auto-detected based on platform, pyseekdb availability, and config.
+Supports three connection modes:
+1. Embedded: pyseekdb with local .db file (requires pylibseekdb)
+2. Remote: pyseekdb connecting to seekdb server via host/port
+3. Simulated: in-memory only fallback when seekdb is unavailable
 """
 
 import json
@@ -32,9 +33,14 @@ _seekdb_mode_actual = "uninitialized"
 _client = None
 _collection = None
 
+_paper_cache: dict[str, dict] = {}
+
+
+# ---------------------------------------------------------------------------
+# Initialization
+# ---------------------------------------------------------------------------
 
 def _patch_torch_dll():
-    """Workaround for torch DLL loading issue on Windows."""
     if sys.platform != "win32":
         return
     original = os.add_dll_directory
@@ -83,6 +89,52 @@ def _try_init_remote():
         return False
 
 
+def _load_cache_from_seekdb():
+    """Load all papers from seekdb into the in-memory cache on startup."""
+    global _paper_cache
+    if not _seekdb_available or _collection is None:
+        return
+    try:
+        count = _collection.count()
+        if count == 0:
+            return
+        result = _collection.get(limit=count)
+        ids = result.get("ids", [])
+        metadatas = result.get("metadatas", [])
+        documents = result.get("documents", [])
+        for i, pid in enumerate(ids):
+            meta = metadatas[i] if i < len(metadatas) else {}
+            doc = documents[i] if i < len(documents) else ""
+            paper = _reconstruct_paper(pid, meta, doc)
+            _paper_cache[pid] = paper
+        print(f"[seekdb] Loaded {len(_paper_cache)} papers from seekdb into cache")
+    except Exception as e:
+        print(f"[seekdb] Cache load error: {e}")
+
+
+def _reconstruct_paper(pid: str, meta: dict, doc_text: str) -> dict:
+    """Reconstruct a full paper dict from seekdb metadata and document text."""
+    paper_json = meta.get("paper_json")
+    if paper_json:
+        try:
+            return json.loads(paper_json)
+        except (json.JSONDecode, TypeError):
+            pass
+
+    return {
+        "id": pid,
+        "title": meta.get("title", ""),
+        "abstract": meta.get("abstract", ""),
+        "content": meta.get("content", doc_text),
+        "authors": json.loads(meta.get("authors", "[]")),
+        "year": int(meta.get("year", 2024)),
+        "tags": json.loads(meta.get("tags", "[]")),
+        "source": meta.get("source", ""),
+        "reading_status": meta.get("reading_status", "unread"),
+        "created_at": meta.get("created_at", _now_iso()),
+    }
+
+
 def init_db():
     global _seekdb_mode_actual
     if SEEKDB_MODE == "simulated":
@@ -90,17 +142,23 @@ def init_db():
         print("[seekdb] Simulated mode (forced by config)")
         return False
     if SEEKDB_MODE == "embedded":
-        return _try_init_embedded()
+        ok = _try_init_embedded()
+        if ok:
+            _load_cache_from_seekdb()
+        return ok
     if SEEKDB_MODE == "remote":
-        return _try_init_remote()
-    # auto: try embedded first (works on Windows with pylibseekdb), then remote, then simulated
+        ok = _try_init_remote()
+        if ok:
+            _load_cache_from_seekdb()
+        return ok
+
     if _try_init_embedded():
+        _load_cache_from_seekdb()
         return True
-    if sys.platform != "win32":
-        pass  # Already tried embedded above
-    else:
-        if _try_init_remote():
-            return True
+    if sys.platform == "win32" and _try_init_remote():
+        _load_cache_from_seekdb()
+        return True
+
     _seekdb_mode_actual = "simulated"
     print("[seekdb] Falling back to simulated mode")
     return False
@@ -115,11 +173,8 @@ def is_seekdb_available():
 
 
 # ---------------------------------------------------------------------------
-# Simulated in-memory store (fallback / demo mode)
+# Simulated helpers (fallback only)
 # ---------------------------------------------------------------------------
-
-_sim_papers: dict[str, dict] = {}
-
 
 def _simple_embed(text: str) -> list[float]:
     text = text.lower()
@@ -147,7 +202,33 @@ def _bm25_score(query_tokens: list[str], doc_tokens: list[str]) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# seekdb write helper
+# ---------------------------------------------------------------------------
+
+def _write_to_seekdb(paper: dict):
+    """Write a paper to seekdb. Stores full paper JSON in metadata for reliable readback."""
+    if not _seekdb_available or _collection is None:
+        return
+    doc_text = f"{paper['title']} {paper['abstract']} {paper['content']}"
+    try:
+        _collection.upsert(
+            ids=[paper["id"]],
+            documents=[doc_text],
+            metadatas=[{
+                "paper_json": json.dumps(paper, ensure_ascii=False),
+                "title": paper["title"],
+                "authors": json.dumps(paper["authors"], ensure_ascii=False),
+                "year": str(paper["year"]),
+                "tags": json.dumps(paper["tags"], ensure_ascii=False),
+                "reading_status": paper.get("reading_status", "unread"),
+            }],
+        )
+    except Exception as e:
+        print(f"[seekdb] Write error for {paper['id']}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Public API — all operations go through seekdb as primary store
 # ---------------------------------------------------------------------------
 
 def add_paper(paper_id: str, title: str, abstract: str, content: str,
@@ -166,118 +247,103 @@ def add_paper(paper_id: str, title: str, abstract: str, content: str,
         "created_at": _now_iso(),
     }
 
-    if _seekdb_available and _collection is not None:
-        doc_text = f"{title} {abstract} {content}"
-        try:
-            _collection.upsert(
-                ids=[paper["id"]],
-                documents=[doc_text],
-                metadatas=[{
-                    "title": title,
-                    "authors": json.dumps(authors),
-                    "year": str(year),
-                    "tags": json.dumps(tags),
-                    "reading_status": reading_status,
-                }],
-            )
-        except Exception:
-            pass
-        # Also store in _sim_papers with embeddings for fallback
-        paper["_embedding"] = _simple_embed(doc_text)
-        paper["_tokens"] = _tokenize(doc_text)
-        _sim_papers[paper["id"]] = paper
-    else:
-        doc_text = f"{title} {abstract} {content}"
-        paper["_embedding"] = _simple_embed(doc_text)
-        paper["_tokens"] = _tokenize(doc_text)
-        _sim_papers[paper["id"]] = paper
-
-    return _public_paper(paper)
+    _write_to_seekdb(paper)
+    _paper_cache[paper["id"]] = paper.copy()
+    return paper.copy()
 
 
 def update_paper(paper_id: str, **fields) -> dict | None:
-    if paper_id not in _sim_papers:
-        return None
-    paper = _sim_papers[paper_id]
+    paper = _paper_cache.get(paper_id)
+    if paper is None:
+        if _seekdb_available:
+            try:
+                result = _collection.get(ids=[paper_id])
+                if result and result.get("ids"):
+                    meta = result["metadatas"][0] if result.get("metadatas") else {}
+                    doc = result["documents"][0] if result.get("documents") else ""
+                    paper = _reconstruct_paper(paper_id, meta, doc)
+                    _paper_cache[paper_id] = paper
+            except Exception:
+                pass
+        if paper is None:
+            return None
+
     paper.update(fields)
-
-    if _seekdb_available and _collection is not None:
-        doc_text = f"{paper['title']} {paper['abstract']} {paper['content']}"
-        try:
-            _collection.upsert(
-                ids=[paper_id],
-                documents=[doc_text],
-                metadatas=[{
-                    "title": paper["title"],
-                    "authors": json.dumps(paper["authors"]),
-                    "year": str(paper["year"]),
-                    "tags": json.dumps(paper["tags"]),
-                    "reading_status": paper.get("reading_status", "unread"),
-                }],
-            )
-        except Exception:
-            pass
-
-    return _public_paper(paper)
+    _write_to_seekdb(paper)
+    _paper_cache[paper_id] = paper.copy()
+    return paper.copy()
 
 
 def delete_paper(paper_id: str) -> bool:
-    if paper_id not in _sim_papers:
-        return False
-    del _sim_papers[paper_id]
+    if paper_id in _paper_cache:
+        del _paper_cache[paper_id]
     if _seekdb_available and _collection is not None:
         try:
             _collection.delete(ids=[paper_id])
         except Exception:
             pass
-    return True
+        return True
+    return paper_id not in _paper_cache
 
 
 def get_paper(paper_id: str) -> dict | None:
-    paper = _sim_papers.get(paper_id)
-    return _public_paper(paper) if paper else None
+    paper = _paper_cache.get(paper_id)
+    if paper is not None:
+        return paper.copy()
+
+    if _seekdb_available and _collection is not None:
+        try:
+            result = _collection.get(ids=[paper_id])
+            if result and result.get("ids"):
+                meta = result["metadatas"][0] if result.get("metadatas") else {}
+                doc = result["documents"][0] if result.get("documents") else ""
+                paper = _reconstruct_paper(paper_id, meta, doc)
+                _paper_cache[paper_id] = paper
+                return paper.copy()
+        except Exception:
+            pass
+    return None
 
 
 def list_papers(filters: dict | None = None) -> list[dict]:
-    results = list(_sim_papers.values())
+    if _seekdb_available and _collection is not None:
+        _load_cache_from_seekdb()
+
+    results = list(_paper_cache.values())
     results = _apply_filters(results, filters)
-    return [_public_paper(p) for p in results]
+    return [p.copy() for p in results]
 
 
 def search(query: str, n_results: int = 10,
            filters: dict | None = None,
            search_mode: str = "hybrid") -> list[dict]:
-    # Use seekdb's native query when available
     if _seekdb_available and _collection is not None:
         return _search_seekdb(query, n_results, filters, search_mode)
-    # Fallback to simulated search
     return _search_simulated(query, n_results, filters, search_mode)
 
 
 def _search_seekdb(query: str, n_results: int, filters: dict | None, search_mode: str) -> list[dict]:
-    """Use seekdb's native vector query for semantic search."""
+    """Use seekdb's native vector query. Reconstructs paper data from seekdb metadata."""
     try:
-        # seekdb query returns results with distances
-        results_data = _collection.query(query_texts=query, n_results=n_results * 2)
+        fetch_count = min(n_results * 3, 100)
+        results_data = _collection.query(query_texts=query, n_results=fetch_count)
 
         if not results_data or not results_data.get('ids', [[]])[0]:
             return []
 
         ids = results_data['ids'][0]
         distances = results_data['distances'][0]
-        documents = results_data['documents'][0]
+        metadatas = results_data.get('metadatas', [[]])[0]
+        documents = results_data.get('documents', [[]])[0]
 
-        # Convert distances to scores (lower distance = higher score)
-        # Normalize scores to 0-1 range
-        max_dist = max(distances) if distances else 1.0
         results = []
+        max_dist = max(distances) if distances else 1.0
 
-        for i, (pid, dist, doc) in enumerate(zip(ids, distances, documents)):
-            paper = _sim_papers.get(pid)
-            if not paper:
-                continue
+        for i, pid in enumerate(ids):
+            meta = metadatas[i] if i < len(metadatas) else {}
+            doc = documents[i] if i < len(documents) else ""
+            paper = _reconstruct_paper(pid, meta, doc)
 
-            # Apply filters
             if filters:
                 if filters.get("year_min") and paper["year"] < int(filters["year_min"]):
                     continue
@@ -287,28 +353,34 @@ def _search_seekdb(query: str, n_results: int, filters: dict | None, search_mode
                     continue
                 if filters.get("reading_status") and paper.get("reading_status") != filters["reading_status"]:
                     continue
+                if filters.get("author"):
+                    aq = filters["author"].lower()
+                    if not any(aq in a.lower() for a in paper.get("authors", [])):
+                        continue
 
-            # Convert distance to similarity score (inverse relationship)
+            dist = distances[i] if i < len(distances) else 0.0
             score = 1.0 - (dist / (max_dist + 0.001)) if max_dist > 0 else 1.0
 
-            r = _public_paper(paper)
-            r["score"] = round(score, 4)
-            r["search_mode"] = search_mode
-            r["distance"] = round(dist, 4)
-            results.append(r)
+            paper["score"] = round(score, 4)
+            paper["search_mode"] = search_mode
+            paper["distance"] = round(dist, 4)
+            results.append(paper)
 
-        # Sort by score descending
+            if len(results) >= n_results:
+                break
+
         results.sort(key=lambda x: x["score"], reverse=True)
-        return results[:n_results]
+        return results
 
     except Exception as e:
         print(f"[seekdb] Query error: {e}")
+        _load_cache_from_seekdb()
         return _search_simulated(query, n_results, filters, search_mode)
 
 
 def _search_simulated(query: str, n_results: int, filters: dict | None, search_mode: str) -> list[dict]:
-    """Simulated search using in-memory embeddings."""
-    candidates = list(_sim_papers.values())
+    """Simulated search using in-memory pseudo-embeddings."""
+    candidates = list(_paper_cache.values())
     candidates = _apply_filters(candidates, filters)
 
     if not candidates:
@@ -318,15 +390,18 @@ def _search_simulated(query: str, n_results: int, filters: dict | None, search_m
     scored = []
 
     for paper in candidates:
+        doc_text = f"{paper['title']} {paper['abstract']} {paper['content']}"
         vec_score = 0.0
         kw_score = 0.0
 
         if search_mode in ("vector", "hybrid"):
             q_emb = _simple_embed(query)
-            vec_score = _cosine_sim(q_emb, paper["_embedding"])
+            d_emb = _simple_embed(doc_text)
+            vec_score = _cosine_sim(q_emb, d_emb)
 
         if search_mode in ("keyword", "hybrid"):
-            kw_score = _bm25_score(query_tokens, paper["_tokens"])
+            doc_tokens = _tokenize(doc_text)
+            kw_score = _bm25_score(query_tokens, doc_tokens)
             if any(t in paper["title"].lower() for t in query_tokens):
                 kw_score *= 2.0
 
@@ -343,7 +418,7 @@ def _search_simulated(query: str, n_results: int, filters: dict | None, search_m
 
     results = []
     for score, paper in scored[:n_results]:
-        r = _public_paper(paper)
+        r = paper.copy()
         r["score"] = round(score, 4)
         r["search_mode"] = search_mode
         results.append(r)
@@ -351,7 +426,10 @@ def _search_simulated(query: str, n_results: int, filters: dict | None, search_m
 
 
 def get_stats() -> dict:
-    papers = list(_sim_papers.values())
+    if _seekdb_available:
+        _load_cache_from_seekdb()
+
+    papers = list(_paper_cache.values())
     tag_counts = defaultdict(int)
     status_counts = defaultdict(int)
     year_counts = defaultdict(int)
@@ -389,10 +467,6 @@ def _apply_filters(items: list[dict], filters: dict | None) -> list[dict]:
         q = filters["author"].lower()
         items = [p for p in items if any(q in a.lower() for a in p.get("authors", []))]
     return items
-
-
-def _public_paper(paper: dict) -> dict:
-    return {k: v for k, v in paper.items() if not k.startswith("_")}
 
 
 def _now_iso() -> str:
