@@ -243,17 +243,12 @@ Response: {
 }
 ```
 
-## 在线演示
-
-**项目网站**：https://researchflow-a9ws7ze9c40.qoder.zone
-
 ## 相关链接
 
 - [seekdb GitHub](https://github.com/oceanbase/seekdb)
 - [seekdb 文档](https://github.com/oceanbase/seekdb-doc)
 - [PowerContext GitHub](https://github.com/oceanbase/powercontext)
 - [pyseekdb PyPI](https://pypi.org/project/pyseekdb/)
-- [Qoder Sites 项目网站](https://researchflow-a9ws7ze9c40.qoder.zone)
 
 ## License
 
