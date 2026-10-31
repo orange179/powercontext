@@ -200,7 +200,7 @@
       <div class="card">
         <div class="num">3</div>
         <h3>用户偏好记忆</h3>
-        <p>每个用户 ID 对应独立 Scope，偏好以 <code class="inline">preference</code> Memory 保存，可随时召回并复现。</p>
+        <p>每个用户 ID 对应独立 Scope，偏好以 <code class="inline">preference</code> Memory 保存；文献与偏好都存在 SQLite 中，应用重启后自动读回，无需重新导入。</p>
       </div>
       <div class="card">
         <div class="num">4</div>
@@ -285,19 +285,31 @@ hits = <span class="k">await</span> pc.search_memory(SearchMemoryRequest(
           <tr><td>3</td><td>保存偏好 <code class="inline">[NLP, Transformer]</code></td><td>偏好写入用户 Scope</td><td class="check">memory revision = 1 ✓</td></tr>
           <tr><td>4</td><td>重新读取偏好</td><td>从 PowerContext 召回偏好</td><td class="check">NLP, Transformer ✓</td></tr>
           <tr><td>5</td><td>请求推荐</td><td>偏好记忆驱动文献检索</td><td class="check">3 条推荐 ✓</td></tr>
+          <tr><td>6</td><td>关闭应用后重新启动</td><td>文献与偏好从 SQLite 读回并可复用</td><td class="check">restored 7 papers ✓</td></tr>
         </tbody>
       </table>
     </div>
     <h3 style="margin:24px 0 10px;">终端输出（scripts/test_backend.py）</h3>
 <pre><span class="g">[startup]</span> PowerContext ready, search_modes=[auto, fts]
 <span class="g">[import]</span> 200 imported=7
-<span class="g">[search]</span> 200 hits=3
+<span class="g">[search]</span> 200 hits=3  (Attention 1.0 / GPT-3 0.984 / BERT 0.968)
 <span class="g">[save prefs]</span> 200 preferred_tags=['NLP', 'Transformer']
 <span class="g">[recall prefs]</span> 200 preferred_tags=['NLP', 'Transformer']
-<span class="g">[recommendations]</span> 200 Attention Is All You Need / BERT / GPT-3
+<span class="g">[recommendations]</span> 200 Attention Is All You Need / GPT-3 / BERT
 <span class="g">[DONE]</span> backend + PowerContext end-to-end OK</pre>
+    <h3 style="margin:24px 0 10px;">终端输出（scripts/test_persistence.py：重启后读回）</h3>
+<pre><span class="g">[startup]</span> restored 0 papers from PowerContext
+<span class="g">[OK ]</span> import: 7 papers
+<span class="g">[OK ]</span> save preference
+<span class="g">[startup]</span> restored 7 papers from PowerContext
+<span class="g">[OK ]</span> documents after restart: 7 papers
+<span class="g">[OK ]</span> search after restart: 3 hits
+<span class="g">[OK ]</span> preferences read back: ['NLP', 'Transformer']
+<span class="g">[OK ]</span> recommendations reuse memory: 3 recs
+<span class="g">[DONE]</span> data and memory survive an application restart</pre>
     <p class="note" style="margin-top:16px;">
-      复现命令：<code class="inline">python scripts/test_backend.py</code>；另有
+      复现命令：<code class="inline">python scripts/test_backend.py</code>、
+      <code class="inline">python scripts/test_persistence.py</code>；另有
       <code class="inline">python scripts/verify_powercontext.py</code> 单独验证记忆写入与召回。
     </p>
   </div>

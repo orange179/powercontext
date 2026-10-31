@@ -81,6 +81,8 @@ python backend/main.py
 
 ## 5. 一键验证（推荐给审核）
 
+### 5.1 端到端验证
+
 ```bash
 python scripts/test_backend.py
 ```
@@ -91,17 +93,44 @@ python scripts/test_backend.py
 
 ```text
 [startup] PowerContext ready, search_modes=[auto, fts]
+[startup] restored 0 papers from PowerContext
 [import] 200 imported= 7
 [documents] 200 count= 7
 [search] 200 hits= 3
-   - Attention Is All You Need ...
-   - BERT: Pre-training of Deep Bidirectional Transformers ...
-   - GPT-3: Language Models are Few-Shot Learners ...
+   - Attention Is All You Need 1.0
+   - GPT-3: Language Models are Few-Shot Learners 0.984
+   - BERT: Pre-training of Deep Bidirectional Transformers 0.968
 [save prefs] 200 {'status': 'ok', ...}
 [recall prefs] 200 {'preferred_tags': ['NLP', 'Transformer'], ...}
-[recommendations] 200 ['Attention Is All You Need', 'BERT: ...', 'GPT-3: ...']
-[health] 200 {'status': 'ok', 'tech': 'PowerContext', 'search_modes': ['auto', 'fts'], ...}
+[recommendations] 200 ['Attention Is All You Need', 'GPT-3: ...', 'BERT: ...']
+[health] 200 {'status': 'ok', 'tech': 'PowerContext', 'search_modes': ['auto', 'fts'], 'papers': 7, ...}
 [DONE] backend + PowerContext end-to-end OK
+```
+
+### 5.2 重启后数据与记忆读回验证
+
+应用启动时会从 PowerContext 的 SQLite 读回已导入的文献（`list_memory_entries`），
+偏好与推荐也直接基于 PowerContext 中的 Memory，因此关闭进程后重启仍然可用。
+
+```bash
+python scripts/test_persistence.py
+```
+
+脚本用同一个数据目录先后启动两次应用：第一次导入 7 篇、检索、保存偏好；第二次（重启后）读回文献列表、检索结果、偏好并生成推荐。实测输出：
+
+```text
+[startup] restored 0 papers from PowerContext
+[OK ] import: 7 papers
+[OK ] search: 3 hits, top=Attention Is All You Need
+[OK ] save preference: ...
+[startup] restored 7 papers from PowerContext
+[OK ] documents after restart: 7 papers
+[OK ] document fields kept: title=Attention Is All You Need, tags=['深度学习', 'NLP', 'Transformer']
+[OK ] health papers: {"papers": 7, ...}
+[OK ] search after restart: 3 hits: ['Attention Is All You Need', ...]
+[OK ] preferences read back: ['NLP', 'Transformer']
+[OK ] recommendations reuse memory: 3 recs
+[DONE] data and memory survive an application restart
 ```
 
 另有最小验证脚本，只验证“写入记忆 → 召回记忆”：
@@ -125,6 +154,8 @@ python scripts/verify_powercontext.py
 ## 7. 数据与重置
 
 - PowerContext 数据：`backend/.powercontext-data/powercontext.db`（SQLite）
+- 启动时会自动从该库读回文献与用户偏好，无需重新导入
+- 可通过环境变量 `RESEARCH_ASSISTANT_DATA_DIR` 指定其他数据目录（测试脚本即用此方式隔离数据）
 - 想从空库演示：停止服务后删除 `backend/.powercontext-data` 目录，再启动
 
 ## 8. 故障排查

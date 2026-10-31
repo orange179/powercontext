@@ -14,12 +14,14 @@
 | 4. 前端实现 | `frontend/index.html` | 完成导入、检索、偏好、推荐的交互与错误提示 |
 | 5. 依赖修复 | 移除 `pylibseekdb`，改为 `powercontext[server]==1.2.0` | 解决“依赖不存在/冲突”与跨平台无法运行的问题 |
 | 6. 验证 | `scripts/test_backend.py`、`verify_powercontext.py` | 端到端跑通并保留输出证据 |
-| 7. 发布 | `dist/index.html` + Qoder Sites | 发布项目展示页，公开访问 |
+| 7. 数据持久化修复 | `_load_library` 启动时从 PowerContext 读回文献；偏好改为直接 `list_memory_entries` 召回；新增 `scripts/test_persistence.py` | 修复“重启后文献列表为空、记忆无法复用”，并用两次启动的脚本验证 |
+| 8. 发布 | `dist/index.html` + Qoder Sites | 发布项目展示页，公开访问 |
 
 ## 验证结论
 
 - PowerContext 能力：`search_modes=[auto, fts]`
-- 导入 7 篇文献 → 检索 `NLP` 命中 3 篇 → 保存偏好 → 召回偏好 → 推荐 3 条
+- 导入 7 篇文献 → 检索 `NLP` 命中 3 篇（100% / 98% / 97%）→ 保存偏好 → 召回偏好 → 推荐 3 条
+- 重启验证：关闭应用后重新启动，`[startup] restored 7 papers from PowerContext`，文献列表、检索、偏好、推荐全部可用（`scripts/test_persistence.py`）
 - 全部接口均为真实调用，非模拟数据
 
 ## Qoder 对话截图 / 录屏

@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,11 +31,15 @@ from pc_runtime import embedded_powercontext
 from powercontext.client import PowerContextClient
 from powercontext.http import (
     CreateScopeRequest,
+    ListMemoryEntriesRequest,
     RememberMemoryRequest,
     SearchMemoryRequest,
 )
 
-DATA_DIR = Path(__file__).resolve().parent / ".powercontext-data"
+DATA_DIR = Path(
+    os.environ.get("RESEARCH_ASSISTANT_DATA_DIR")
+    or Path(__file__).resolve().parent / ".powercontext-data"
+)
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 state: dict[str, Any] = {
@@ -59,6 +64,8 @@ async def lifespan(app: FastAPI):
             )
         )
         state["library_scope"] = scope.scope_id
+        state["papers"] = await _load_library(pc, scope.scope_id)
+        print(f"[startup] restored {len(state['papers'])} papers from PowerContext")
         yield
     state["pc"] = None
 
@@ -104,18 +111,85 @@ async def _user_scope(user_id: str) -> str:
     return scope.scope_id
 
 
+DOC_LABELS = {
+    "标题": "title",
+    "作者": "authors",
+    "摘要": "abstract",
+    "关键词": "keywords",
+    "标签": "tags",
+    "备注": "notes",
+    "时间": "created_at",
+}
+
+
+def _one_line(value: Any) -> str:
+    return " ".join(str(value or "").split())
+
+
 def _memory_text(doc: dict[str, Any]) -> str:
-    return " | ".join(
-        part
-        for part in [
-            doc["title"],
-            doc["authors"],
-            doc["abstract"],
-            doc["keywords"],
-            ", ".join(doc["tags"]),
-        ]
-        if part
-    )
+    """把文献写成可检索、也可完整还原的分行文本（一条 Memory 即一篇文献）。"""
+    lines = [f"标题: {_one_line(doc['title'])}"]
+    for label, key in (("作者", "authors"), ("摘要", "abstract"), ("关键词", "keywords"), ("备注", "notes")):
+        value = _one_line(doc.get(key))
+        if value:
+            lines.append(f"{label}: {value}")
+    tags = ", ".join(doc.get("tags") or [])
+    if tags:
+        lines.append(f"标签: {tags}")
+    if doc.get("created_at"):
+        lines.append(f"时间: {doc['created_at']}")
+    return "\n".join(lines)
+
+
+def _doc_from_text(text: str) -> dict[str, Any] | None:
+    """从 Memory 文本还原文献。兼容早期 “ | ” 拼接格式。"""
+    doc: dict[str, Any] = {"title": "", "authors": "", "abstract": "", "keywords": "", "notes": "", "tags": []}
+    parsed = False
+    for line in (text or "").splitlines():
+        label, sep, value = line.partition(":")
+        key = DOC_LABELS.get(label.strip())
+        if not sep or key is None:
+            continue
+        value = value.strip()
+        if key == "tags":
+            doc["tags"] = [tag.strip() for tag in value.split(",") if tag.strip()]
+        else:
+            doc[key] = value
+        parsed = True
+
+    if not parsed:
+        parts = [part.strip() for part in (text or "").split(" | ")]
+        if not parts or not parts[0]:
+            return None
+        doc["title"] = parts[0]
+        for key, value in zip(("authors", "abstract", "keywords"), parts[1:4]):
+            doc[key] = value
+        if len(parts) > 4:
+            doc["tags"] = [tag.strip() for tag in parts[4].split(",") if tag.strip()]
+
+    if not doc["title"]:
+        return None
+    doc["id"] = hashlib.md5(doc["title"].encode("utf-8")).hexdigest()[:12]
+    doc["created_at"] = doc.get("created_at") or ""
+    return doc
+
+
+async def _load_library(pc: PowerContextClient, scope_id: str) -> list[dict[str, Any]]:
+    """启动时从 PowerContext 读回全部文献记忆，保证重启后数据仍可见、可检索。"""
+    response = await pc.list_memory_entries(ListMemoryEntriesRequest(scope_id=scope_id))
+    papers: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for entry in response.entries:
+        if getattr(entry, "kind", "") != "paper" or getattr(entry, "state", "active") != "active":
+            continue
+        doc = _doc_from_text(entry.text or "")
+        if doc is None or doc["title"] in seen:
+            continue
+        seen.add(doc["title"])
+        papers.append(doc)
+    # list_memory_entries 按新到旧返回，这里按导入时间还原原始顺序。
+    papers.sort(key=lambda item: item.get("created_at") or "")
+    return papers
 
 
 def _truncate_utf8(text: str, limit: int = 8000) -> str:
@@ -126,9 +200,11 @@ def _truncate_utf8(text: str, limit: int = 8000) -> str:
 
 
 def _find_paper(text: str) -> dict[str, Any] | None:
-    title = text.split(" | ", 1)[0].strip()
+    doc = _doc_from_text(text)
+    if doc is None:
+        return None
     for paper in state["papers"]:
-        if paper["title"] == title:
+        if paper["id"] == doc["id"]:
             return paper
     return None
 
@@ -136,6 +212,23 @@ def _find_paper(text: str) -> dict[str, Any] | None:
 def _parse_tags(memory_text: str) -> list[str]:
     payload = memory_text.split(":", 1)[1] if ":" in memory_text else memory_text
     return [t.strip() for t in payload.split(",") if t.strip()]
+
+
+async def _recall_preferences(user_id: str) -> tuple[list[str], list[str]]:
+    """从 PowerContext 读回该用户保存过的偏好记忆（跨进程重启依然有效）。"""
+    scope_id = await _user_scope(user_id)
+    response = await _pc().list_memory_entries(ListMemoryEntriesRequest(scope_id=scope_id))
+    memories = [
+        entry.text or ""
+        for entry in response.entries
+        if getattr(entry, "kind", "") == "preference" and getattr(entry, "state", "active") == "active"
+    ]
+    tags: list[str] = []
+    for memory in memories:
+        for tag in _parse_tags(memory):
+            if tag not in tags:
+                tags.append(tag)
+    return memories, tags
 
 
 def _normalize_scores(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -232,17 +325,9 @@ async def search(query: SearchQuery):
 
 @app.get("/api/user/{user_id}/preferences")
 async def get_preferences(user_id: str):
-    """从 PowerContext 召回该用户之前保存的偏好。"""
-    scope_id = await _user_scope(user_id)
-    hits = await _pc().search_memory(
-        SearchMemoryRequest(scope_id=scope_id, query="偏好", limit=10, mode="fts")
-    )
-    tags: list[str] = []
-    for hit in hits.hits:
-        for tag in _parse_tags(hit.text):
-            if tag not in tags:
-                tags.append(tag)
-    return {"user_id": user_id, "preferred_tags": tags, "recalled_memories": [h.text for h in hits.hits]}
+    """从 PowerContext 读回该用户之前保存的偏好。"""
+    memories, tags = await _recall_preferences(user_id)
+    return {"user_id": user_id, "preferred_tags": tags, "recalled_memories": memories}
 
 
 @app.post("/api/user/{user_id}/preferences")
@@ -267,16 +352,8 @@ async def save_preferences(user_id: str, payload: PreferencePayload):
 
 @app.get("/api/user/{user_id}/recommendations")
 async def recommendations(user_id: str):
-    """数据流：召回 PowerContext 中的偏好 Memory -> 提取标签 -> 检索文献。"""
-    scope_id = await _user_scope(user_id)
-    pref_hits = await _pc().search_memory(
-        SearchMemoryRequest(scope_id=scope_id, query="偏好", limit=5, mode="fts")
-    )
-    tags: list[str] = []
-    for hit in pref_hits.hits:
-        for tag in _parse_tags(hit.text):
-            if tag not in tags:
-                tags.append(tag)
+    """数据流：读回 PowerContext 中的偏好 Memory -> 提取标签 -> 检索文献。"""
+    memories, tags = await _recall_preferences(user_id)
     if not tags:
         return {"based_on": [], "recommendations": []}
 
@@ -292,7 +369,7 @@ async def recommendations(user_id: str):
                 continue
             seen.add(paper["id"])
             recs.append({"document": paper, "matched_tag": tag, "score": float(hit.score)})
-    return {"based_on": [h.text for h in pref_hits.hits], "recommendations": _normalize_scores(recs)[:5]}
+    return {"based_on": memories, "recommendations": _normalize_scores(recs)[:5]}
 
 
 # ---------------------------------------------------------------- 健康检查 / 证据

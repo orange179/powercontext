@@ -1,9 +1,12 @@
 """End-to-end test of the real backend using a real embedded PowerContext."""
 
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
+os.environ.setdefault("RESEARCH_ASSISTANT_DATA_DIR", tempfile.mkdtemp(prefix="ra-e2e-"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
 from fastapi.testclient import TestClient  # noqa: E402

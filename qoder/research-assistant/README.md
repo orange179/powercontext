@@ -70,22 +70,48 @@ python scripts/test_backend.py
 
 ```text
 [startup] PowerContext ready, search_modes=[auto, fts]
+[startup] restored 0 papers from PowerContext
 [import] 200 imported= 7
+[documents] 200 count= 7
 [search] 200 hits= 3
+   - Attention Is All You Need 1.0
+   - GPT-3: Language Models are Few-Shot Learners 0.984
+   - BERT: Pre-training of Deep Bidirectional Transformers 0.968
 [save prefs] 200 {'status': 'ok', 'preferred_tags': ['NLP', 'Transformer']}
-[recall prefs] 200 {'preferred_tags': ['NLP', 'Transformer']}
-[recommendations] 200 ['Attention Is All You Need', 'BERT: ...', 'GPT-3: ...']
-[health] 200 {'tech': 'PowerContext', ...}
+[recall prefs] 200 {'preferred_tags': ['NLP', 'Transformer'], 'recalled_memories': ['偏好标签: NLP, Transformer']}
+[recommendations] 200 ['Attention Is All You Need', 'GPT-3: ...', 'BERT: ...']
+[health] 200 {'tech': 'PowerContext', 'papers': 7, ...}
 [DONE] backend + PowerContext end-to-end OK
 ```
 
 | 步骤 | 输入 | 预期结果 | 实测 |
 |------|------|----------|------|
 | 导入 | `data/sample_papers.csv` | 7 篇文献写入 PowerContext | 7 篇 ✓ |
-| 检索 | `NLP` | 返回相关文献与匹配度 | 3 条 ✓ |
+| 检索 | `NLP` | 返回相关文献与匹配度 | 3 条（100% / 98% / 97%）✓ |
 | 保存偏好 | `[NLP, Transformer]` | 写入 user1 Scope | revision=1 ✓ |
 | 召回偏好 | — | 从 PowerContext 读回 | NLP, Transformer ✓ |
 | 推荐 | — | 偏好驱动文献检索 | 3 条 ✓ |
+
+重启后读回与复用（关闭应用再启动，仍从同一个 SQLite 恢复）：
+
+```bash
+python scripts/test_persistence.py
+```
+
+```text
+[startup] restored 0 papers from PowerContext
+[OK ] import: 7 papers
+[OK ] search: 3 hits, top=Attention Is All You Need
+[OK ] save preference: ...
+[startup] restored 7 papers from PowerContext
+[OK ] documents after restart: 7 papers
+[OK ] document fields kept: title=Attention Is All You Need, tags=['深度学习', 'NLP', 'Transformer']
+[OK ] health papers: {"papers": 7, ...}
+[OK ] search after restart: 3 hits: ['Attention Is All You Need', ...]
+[OK ] preferences read back: ['NLP', 'Transformer']
+[OK ] recommendations reuse memory: 3 recs
+[DONE] data and memory survive an application restart
+```
 
 ## 演示视频与截图
 
@@ -112,6 +138,7 @@ research-assistant/
 ├── data/sample_papers.csv   # 示例文献
 ├── scripts/
 │   ├── test_backend.py      # 端到端验证（导入→检索→偏好→推荐）
+│   ├── test_persistence.py  # 重启后数据/偏好读回与复用验证
 │   └── verify_powercontext.py  # 最小记忆写入/召回验证
 ├── docs/
 │   ├── RUNNING.md           # 运行说明
