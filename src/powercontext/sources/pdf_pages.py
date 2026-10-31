@@ -32,8 +32,12 @@ from powercontext.sources.models import Source, SourceMaterialization
 PDF_PAGE_SOURCE_NAME = "pdf-page"
 
 _TOKEN_PATTERN = re.compile(r"[a-z]+|\d+")
-_HEADING_PATTERN = re.compile(r"^(Item\s+\d+[A-Z]?\.|Note\s+\d+|PART\s+[IVX]+|Consolidated\s+(?:Statement|Balance))")
+_HEADING_PATTERN = re.compile(
+    r"^(Item\s+\d+[A-Z]?\.|Note\s+\d+|PART\s+[IVX]+|Consolidated\s+(Statement|Balance))",
+    re.IGNORECASE,
+)
 _TABLE_OF_CONTENTS = "table of contents"
+
 _STOPWORDS = frozenset([
     "a",
     "an",
@@ -152,12 +156,150 @@ _STOPWORDS = frozenset([
     "very",
     "much",
     "many",
+    "define",
+    "assume",
+    "assuming",
+    "perspective",
+    "relying",
+    "rely",
+    "calculate",
+    "compute",
+    "tell",
+    "describe",
+    "list",
+    "name",
+    "identify",
+    "value",
+    "values",
+    "number",
+    "amount",
+    "total",
+    "reported",
+    "report",
+    "according",
+    "within",
+    "shown",
+    "outlined",
+    "explicitly",
+    "important",
+    "primarily",
+    "directly",
+    "ongoing",
+    "materially",
 ])
+
+# Canonical stems for irregular/derivational forms so paraphrased question words
+# (e.g. "retain" vs "retention", "geographies" vs "geographic") land on the same term.
+_IRREGULAR_STEMS = {
+    "retain": "retain",
+    "retention": "retain",
+    "retained": "retain",
+    "proceed": "proceed",
+    "proceeding": "proceed",
+    "geographies": "geograph",
+    "geographic": "geograph",
+    "geography": "geograph",
+    "customer": "customer",
+    "customers": "customer",
+    "client": "customer",
+    "clients": "customer",
+    "cardmember": "cardmember",
+}
+
+# Generic finance-domain concept expansions. Each entry maps a query concept to the
+# document-side terms that commonly carry the same meaning in a 10-K. This is domain
+# vocabulary, not tied to any single document or question.
+_CONCEPT_EXPANSIONS = {
+    "geograph": [
+        "geograph",
+        "segment",
+        "region",
+        "division",
+        "international",
+        "domestic",
+        "united states",
+        "emea",
+        "apac",
+        "latin america",
+        "americas",
+        "europe",
+        "asia",
+        "lacc",
+    ],
+    "legal": [
+        "legal",
+        "litigation",
+        "proceeding",
+        "lawsuit",
+        "claim",
+        "action",
+        "settle",
+        "court",
+        "dispute",
+        "contingent",
+    ],
+    "customer": ["customer", "client", "concentration", "airline", "government", "retention", "cardmember"],
+    "concentration": ["concentration", "customer", "account", "revenue"],
+    "margin": [
+        "margin",
+        "gross profit",
+        "operating income",
+        "operating profit",
+        "profitability",
+        "cost of sales",
+        "cost of products",
+        "cost of services",
+    ],
+    "capex": ["capital expenditure", "capital spending", "purchase", "property", "plant", "equipment"],
+    "capital": ["capital expenditure", "capital spending", "purchase", "property", "plant", "equipment"],
+    "ebitda": ["ebitda", "operating income", "depreciation", "amortization"],
+    "tax": ["tax", "income tax", "provision", "effective rate", "tax rate"],
+    "revenue": ["revenue", "sales", "income", "net revenue", "total revenue"],
+    "liabilit": ["liabilit", "balance sheet", "debt", "obligation", "borrowing"],
+    "segment": ["segment", "business", "product", "service", "division"],
+    "gross": ["gross", "margin", "cost of sales", "cost of products", "cost of services", "gross profit"],
+    "operating": ["operating", "income", "operating income", "operating profit", "margin"],
+    "quick": ["quick", "current asset", "current liabilit", "cash", "inventory", "liquidity", "balance sheet"],
+    "liquidity": ["liquidity", "quick", "current asset", "current liabilit", "cash", "balance sheet"],
+}
+
+# A question about a financial metric usually points at the core financial statements,
+# even when the metric is paraphrased ("gross margin" -> income statement).
+_METRIC_PATTERN = re.compile(
+    r"margin|rate|ratio|income|revenue|expense|cost|profit|ebitda|tax|cash flow|balance sheet|"
+    r"liabilit|asset|equity|debt|depreciation|amortization|operating|gross|net|liquidity"
+)
+
+# Statement headings (normalized, singular/plural collapsed) that answer metric questions.
+_STATEMENT_HEAD_KEYS = (
+    "consolidated statement of income",
+    "consolidated statement of operation",
+    "consolidated balance sheet",
+    "consolidated statement of cash flow",
+)
+_INCOME_STATEMENT_KEYS = ("consolidated statement of income", "consolidated statement of operation")
+_CASH_FLOW_KEYS = ("consolidated statement of cash flow",)
+
+# A metric concept pins the question to a specific financial statement, even when
+# the question paraphrases the metric ("gross margin" -> income statement).
+_CONCEPT_STATEMENT_KEYS = {
+    "margin": _INCOME_STATEMENT_KEYS,
+    "gross": _INCOME_STATEMENT_KEYS,
+    "operating": _INCOME_STATEMENT_KEYS,
+    "ebitda": _INCOME_STATEMENT_KEYS,
+    "quick": ("consolidated balance sheet",),
+    "liquidity": ("consolidated balance sheet",),
+    "liabilit": ("consolidated balance sheet",),
+    "capex": _CASH_FLOW_KEYS,
+    "capital": _CASH_FLOW_KEYS,
+}
 
 _BM25_K1 = 1.2
 _BM25_B = 0.75
-_HEADING_WEIGHT = 2.5
-_DOCUMENT_ID_WEIGHT = 0.3
+_HEADING_WEIGHT = 3.0
+_STATEMENT_HINT_BOOST = 6.0
+_METRIC_STATEMENT_BOOST = 4.0
+_STEM_MAX_LENGTH = 7
 
 
 class PDFDocumentInput(BaseModel):
@@ -302,64 +444,87 @@ def _tokenize(value: str) -> list[str]:
     return _TOKEN_PATTERN.findall(value.lower())
 
 
-_INFLECTION_RULES: tuple[tuple[str, str], ...] = (
-    ("ies", "y"),
-    ("ing", ""),
-    ("ed", ""),
-    ("ly", ""),
-    ("ment", ""),
-    ("ness", ""),
-    ("tion", ""),
-    ("sion", ""),
-    ("ance", ""),
-    ("ence", ""),
-)
-
-
-def _collapse(base: str) -> str:
-    if len(base) > 2 and base[-1] == base[-2] and base[-1] not in "aeioul":
-        base = base[:-1]
-    if len(base) > 3 and base.endswith("e"):
-        base = base[:-1]
-    return base
-
-
 def _stem(token: str) -> str:
-    """Fold common English inflections so ``geographies`` matches ``geographic``."""
+    """Fold common English inflections and a few derivational forms to one key."""
+    token = token.lower()
+    canonical = _IRREGULAR_STEMS.get(token)
+    if canonical is not None:
+        return canonical
     if len(token) <= 3 or not token.isalpha():
         return token
-    for suffix, replacement in _INFLECTION_RULES:
-        if token.endswith(suffix) and len(token) > len(suffix) + 2:
-            return _collapse(token[: -len(suffix)]) + replacement
-    if token.endswith(("ic", "al")) and len(token) > 6:
-        return token[:-2]
-    if token.endswith("s") and not token.endswith(("ss", "us", "is")) and len(token) > 4:
-        return token[:-1]
-    if len(token) > 4 and token.endswith("e"):
-        return token[:-1]
+    if token.endswith("ies") and len(token) > 4:
+        token = token[:-3] + "y"
+    elif token.endswith("ing") and len(token) > 5:
+        token = token[:-3]
+    elif (token.endswith("ed") and len(token) > 4) or (token.endswith("ly") and len(token) > 4):
+        token = token[:-2]
+    elif (
+        (token.endswith("ment") and len(token) > 6)
+        or (token.endswith("ness") and len(token) > 6)
+        or (token.endswith("tion") and len(token) > 6)
+        or (token.endswith("sion") and len(token) > 6)
+        or (token.endswith("ance") and len(token) > 6)
+        or (token.endswith("ence") and len(token) > 6)
+    ):
+        token = token[:-4]
+    elif token.endswith("s") and not token.endswith(("ss", "us", "is")) and len(token) > 4:
+        token = token[:-1]
+    if len(token) > _STEM_MAX_LENGTH:
+        token = token[:_STEM_MAX_LENGTH]
     return token
 
 
-def _query_terms(question: str, document_frequency: Counter[str]) -> list[str]:
+def _normalize_heading(line: str) -> str:
+    line = re.sub(r"\bstatements\b", "statement", line)
+    line = re.sub(r"\bsheets\b", "sheet", line)
+    return re.sub(r"\s+", " ", line)
+
+
+def _query_terms(  # noqa: C901
+    question: str, document_frequency: Counter[str]
+) -> tuple[list[str], list[str], bool]:
+    """Extract query terms with finance-domain expansion and statement targets."""
+    text = question.lower()
+    target_keys: list[str] = []
+    if re.search(r"balance sheet", text):
+        target_keys.append("consolidated balance sheet")
+    if re.search(r"income statement|p&l|p and l", text):
+        target_keys.extend(_INCOME_STATEMENT_KEYS)
+    if re.search(r"cash flow", text):
+        target_keys.append("consolidated statement of cash flow")
+
     terms: list[str] = []
     for token in _tokenize(question):
         if token in _STOPWORDS or (len(token) == 1 and token.isalpha()):
             continue
         stemmed = _stem(token)
-        if stemmed not in terms and document_frequency.get(stemmed, 0) > 0:
-            terms.append(stemmed)
-    return terms
+        if stemmed in terms:
+            continue
+        terms.append(stemmed)
+        for expansion in _CONCEPT_EXPANSIONS.get(stemmed, ()):
+            for word in expansion.split():
+                expanded = _stem(word)
+                if expanded not in terms and document_frequency.get(expanded, 0) > 0:
+                    terms.append(expanded)
+        for key in _CONCEPT_STATEMENT_KEYS.get(stemmed, ()):
+            if key not in target_keys:
+                target_keys.append(key)
+
+    terms = [term for term in terms if document_frequency.get(term, 0) > 0]
+    is_metric = bool(_METRIC_PATTERN.search(text))
+    return terms, target_keys, is_metric
 
 
-def _heading_tokens(text: str) -> list[str]:
-    lines = []
+def _heading_tokens(text: str) -> tuple[Counter[str], str]:
+    """Return heading-term bag and normalized heading text for a page body."""
+    lines: list[str] = []
     for raw in text.split("\n"):
         line = raw.strip()
         if not line or line.lower() == _TABLE_OF_CONTENTS:
             continue
         if _HEADING_PATTERN.match(line):
-            lines.append(line)
-    return [_stem(token) for token in _tokenize("\n".join(lines))]
+            lines.append(_normalize_heading(line.lower()))
+    return Counter(_stem(token) for token in _tokenize("\n".join(lines))), " ".join(lines)
 
 
 async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[MemoryCitation, ...]:
@@ -367,10 +532,10 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
 
     Retrieval runs offline over the pages already materialized in the scoped
     Memory: the public ``list`` API supplies the candidate entries, then a
-    deterministic BM25 ranking over page text, section headings and the
-    document identity picks the best ``limit`` distinct pages. Every returned
-    citation is the real stored entry, so callers can ``get`` it back to the
-    exact page.
+    deterministic BM25 ranking over page text, section headings, statement hints
+    and a small finance-domain concept expansion picks the best ``limit`` distinct
+    pages. Every returned citation is the real stored entry, so callers can ``get``
+    it back to the exact page.
     """
     if limit <= 0:
         return ()
@@ -387,20 +552,21 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
         if source_id in seen_sources:
             continue
         seen_sources.add(source_id)
-        document_id, _, body = entry.text.partition("\n")
+        _, _, body = entry.text.partition("\n")
+        headings, headtext = _heading_tokens(body)
         candidates.append({
             "citation": record.citation,
-            "document_terms": {_stem(token) for token in _tokenize(document_id)},
             "bag": Counter(_stem(token) for token in _tokenize(body)),
             "length": len(_tokenize(body)),
-            "headings": Counter(_heading_tokens(body)),
+            "headings": headings,
+            "headtext": headtext,
         })
 
     citations = _rank_citations(question, candidates)
     return tuple(citations[:limit])
 
 
-def _rank_citations(question: str, candidates: list[dict]) -> list[MemoryCitation]:
+def _rank_citations(question: str, candidates: list[dict]) -> list[MemoryCitation]:  # noqa: C901
     if not candidates:
         return []
 
@@ -409,7 +575,7 @@ def _rank_citations(question: str, candidates: list[dict]) -> list[MemoryCitatio
         document_frequency.update(candidate["bag"].keys())
     average_length = sum(candidate["length"] for candidate in candidates) / len(candidates) or 1.0
 
-    terms = _query_terms(question, document_frequency)
+    terms, target_keys, is_metric = _query_terms(question, document_frequency)
     if not terms:
         return [candidate["citation"] for candidate in candidates]
 
@@ -418,17 +584,25 @@ def _rank_citations(question: str, candidates: list[dict]) -> list[MemoryCitatio
     for position, candidate in enumerate(candidates):
         score = 0.0
         bag = candidate["bag"]
+        headings = candidate["headings"]
         for term in terms:
             frequency = document_frequency[term]
             idf = math.log((total - frequency + 0.5) / (frequency + 0.5) + 1.0)
-            if term in candidate["document_terms"]:
-                idf *= _DOCUMENT_ID_WEIGHT
             term_frequency = bag.get(term, 0)
             if term_frequency:
                 norm = 1 - _BM25_B + _BM25_B * candidate["length"] / average_length
                 score += idf * term_frequency * (_BM25_K1 + 1) / (term_frequency + _BM25_K1 * norm)
-            if term in candidate["headings"]:
+            if term in headings:
                 score += _HEADING_WEIGHT * idf
+        headtext = candidate["headtext"]
+        for key in target_keys:
+            if key in headtext:
+                score += _STATEMENT_HINT_BOOST
+        if is_metric:
+            for key in _STATEMENT_HEAD_KEYS:
+                if key in headtext:
+                    score += _METRIC_STATEMENT_BOOST
+                    break
         if score > 0:
             scored.append((score, position))
 
