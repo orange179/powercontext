@@ -24,12 +24,18 @@
 
 ## Qoder 对话截图 / 录屏
 
-> 提交时请在此处补充 1–2 张 Qoder 对话截图或一段录屏（例如本项目的需求梳理与验证过程），
-> 用于满足赛题“Qoder 开发记录（对话截图/录屏 + UID）”的要求。
+以下截图直接抓取自 Qoder CN 客户端窗口（账号 UID `nick4039665807`），记录本项目在 Qoder 中完成需求澄清、代码修改、截图与录屏、提交验证的过程。
 
-建议截图内容：
+### 1. 对话与文件改动
 
-1. 与 Qoder 讨论 PowerContext 集成与 lifespan 问题的对话
-2. Qoder 中运行 `scripts/test_backend.py` 并输出 `[DONE] backend + PowerContext end-to-end OK` 的记录
+![Qoder 对话与文件改动](qoder-01.png)
 
-截图文件可放在 `docs/qoder-*.png` 并在此引用。
+### 2. 截图 / 录屏与发布过程
+
+![Qoder 中录制演示视频并发布站点](qoder-02.png)
+
+### 配套材料
+
+- 演示视频：`docs/demo-walkthrough.mp4`（37 秒真实录屏）
+- 运行截图：`docs/demo-01-home.png` … `docs/demo-05-site.png`
+- 站点：<https://research-assistant-vxnv854uztp.qoder.zone>
