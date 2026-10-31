@@ -108,6 +108,11 @@
   }
   figcaption { color: var(--muted); font-size: 13.5px; margin-top: 8px; }
   .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+  .video-wrap {
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: #000; margin-bottom: 22px;
+  }
+  .video-wrap video { display: block; width: 100%; height: auto; }
   table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14.5px; }
   th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { background: #fafbff; font-weight: 600; color: var(--muted); }
@@ -133,7 +138,7 @@
     <div class="hero-actions">
       <a class="btn btn-primary" href="#quickstart">本地体验入口</a>
       <a class="btn btn-ghost" href="https://github.com/orange179/powercontext/tree/qoder-competition/qoder/research-assistant" target="_blank" rel="noreferrer">代码仓库</a>
-      <a class="btn btn-ghost" href="#demo">演示截图</a>
+      <a class="btn btn-ghost" href="#demo">演示视频</a>
     </div>
     <div class="tagline">
       <span>Python 3.11+</span><span>FastAPI</span><span>PowerContext 1.2.0</span><span>SQLite 进程内运行</span><span>Windows / macOS / Linux</span>
@@ -147,7 +152,7 @@
     <a href="#features">核心功能</a>
     <a href="#integration">技术集成</a>
     <a href="#evidence">验证样例</a>
-    <a href="#demo">演示截图</a>
+    <a href="#demo">演示视频</a>
     <a href="#quickstart">快速体验</a>
     <a href="#repo">代码仓库</a>
   </div>
@@ -300,8 +305,15 @@ hits = <span class="k">await</span> pc.search_memory(SearchMemoryRequest(
 
 <section id="demo">
   <div class="wrap">
-    <h2>演示截图</h2>
-    <p class="sub">以下截图来自本地真实运行的应用（非静态模拟）。</p>
+    <h2>演示视频与截图</h2>
+    <p class="sub">视频与截图均来自本地真实运行的应用（非静态模拟）。</p>
+    <div class="video-wrap">
+      <video controls preload="metadata" poster="assets/demo-03-search.png">
+        <source src="assets/demo-walkthrough.mp4" type="video/mp4">
+        你的浏览器不支持视频播放，可下载 <a href="assets/demo-walkthrough.mp4">demo-walkthrough.mp4</a>。
+      </video>
+    </div>
+    <p class="sub">37 秒完整流程：导入示例数据 → 文献列表 → 检索 NLP → 保存偏好记忆 → 推荐。</p>
     <div class="shots">
       <figure>
         <img src="assets/demo-02-import.png" alt="导入 7 篇文献后的界面">

@@ -87,7 +87,9 @@ python scripts/test_backend.py
 | 召回偏好 | — | 从 PowerContext 读回 | NLP, Transformer ✓ |
 | 推荐 | — | 偏好驱动文献检索 | 3 条 ✓ |
 
-## 演示截图
+## 演示视频与截图
+
+演示视频：[docs/demo-walkthrough.mp4](docs/demo-walkthrough.mp4)（37 秒真实录屏：导入 → 列表 → 检索 NLP → 偏好记忆 → 推荐）
 
 | 启动首页 | 导入 7 篇文献 | 检索 NLP |
 |---|---|---|
