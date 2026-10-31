@@ -89,11 +89,15 @@ python scripts/test_backend.py
 
 ## 演示截图
 
-| 导入 7 篇文献 | 检索 NLP | 偏好记忆驱动的推荐 |
+| 启动首页 | 导入 7 篇文献 | 检索 NLP |
 |---|---|---|
-| ![导入](docs/demo-02-import.png) | ![检索](docs/demo-03-search.png) | ![推荐](docs/demo-04-recommendations.png) |
+| ![首页](docs/demo-01-home.png) | ![导入](docs/demo-02-import.png) | ![检索](docs/demo-03-search.png) |
 
-截图来自本地真实运行的应用。
+| 保存偏好记忆 | 偏好记忆驱动的推荐 |
+|---|---|
+| ![偏好](docs/demo-03b-preferences.png) | ![推荐](docs/demo-04-recommendations.png) |
+
+截图来自本地真实运行的应用，完整截图与说明见 [docs/SCREENSHOT.md](docs/SCREENSHOT.md)。
 
 ## 项目结构
 

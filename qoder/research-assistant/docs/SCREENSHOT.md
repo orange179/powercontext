@@ -8,13 +8,17 @@
 
 > 注：`screenshot-qoder-sites.png` 为早期版本界面截图；当前网站与截图见下方。
 
-## 真实运行截图
+## 真实运行截图（2026-10-31 录制，按使用顺序）
 
 | 截图 | 内容 |
 |------|------|
-| `demo-02-import.png` | 导入 7 篇示例文献，统计显示 7 篇 / 15 个标签 |
-| `demo-03-search.png` | 检索 `NLP`，PowerContext FTS 返回 3 篇文献与匹配度 |
-| `demo-04-recommendations.png` | 保存偏好后召回记忆，生成 3 条推荐 |
+| `demo-01-home.png` | 启动后首页，统计为 0 篇文献 |
+| `demo-02-import-filled.png` | 点击“填入示例数据”，CSV 内容载入输入框 |
+| `demo-02-import.png` | 导入完成，7 篇文献 / 15 个标签，列表可见 |
+| `demo-03-search.png` | 检索 `NLP`，PowerContext FTS 返回 3 篇，匹配度 100% / 98% / 97% |
+| `demo-03b-preferences.png` | 选择偏好标签 `NLP` 并保存到 PowerContext 记忆 |
+| `demo-04-recommendations.png` | 召回偏好记忆，生成 3 条带“命中标签”的推荐 |
+| `demo-05-site.png` | 发布的网站首页（作品介绍页） |
 
 ## 技术集成
 
