@@ -1,255 +1,131 @@
 # 文献整理助手 - Research Assistant
 
-基于 **seekdb** + **PowerContext** 的智能文献检索与管理工具，帮助研究人员高效整理和检索学术文献。
+基于 **PowerContext** 的文献管理与检索助手：把论文导入成可检索的知识库，并让 PowerContext 记住你的研究方向，
+下次打开时自动召回偏好、生成个性化推荐。
 
-## 📖 项目简介
+> 本项目为 OceanBase 2026 训练营「Qoder 综合赛道」作品，位于 `powercontext` 仓库 `qoder-competition` 分支的
+> `qoder/research-assistant` 目录（该分支基于 `2026-competition-ecosystem`）。
 
-整理文献要翻几十篇论文，复习时找不到上学期的笔记，周报总要从聊天记录里一条条拼。学习、科研和工作中，总有一些重复又耗时的环节值得被改造。
+## 项目简介
 
-**文献整理助手**通过集成 seekdb 的语义检索能力和 PowerContext 的用户记忆功能，为用户提供：
+整理文献要翻几十篇论文，复习时找不到上学期的笔记，每次打开工具都要重新选择研究方向。
+**文献整理助手**把“文献入库、检索、偏好记忆、推荐”收敛到一条由 PowerContext 驱动的链路中：
 
-- 📥 **批量导入**：支持 CSV 格式文献数据导入
-- 🔍 **语义检索**：基于关键词的智能匹配与检索
-- 🏷️ **标签管理**：自动提取和管理文献标签
-- 👤 **个性化推荐**：基于用户偏好的文献推荐
-- 📊 **进度追踪**：记录用户阅读进度和学习历史
+- 文献以 Memory 的形式写入共享“文献库” Scope；
+- 检索直接调用 PowerContext 的全文检索（FTS）；
+- 用户偏好写入每个用户独立的 Scope，可跨会话召回；
+- 推荐先召回偏好，再按标签检索文献库，推荐理由可解释。
 
-## 🛠️ 技术栈
+它不是一个静态演示页：后端真实启动进程内 PowerContext（ASGI + SQLite），所有功能都走实际接口。
+
+## 解决的问题
+
+| 痛点 | 本项目做法 |
+|------|-----------|
+| 文献分散在表格/笔记里，检索靠人工翻找 | 每篇文献写入 PowerContext Memory，统一全文检索 |
+| 兴趣偏好无法跨会话保留 | 偏好写入用户独立 Scope，随时召回 |
+| 推荐是写死规则，缺乏记忆依据 | 偏好 Memory → 标签 → 文献检索，形成可解释推荐链 |
+
+## 核心功能
+
+1. **CSV 批量导入**：`remember_memory(kind="paper")` 逐篇写入文献库 Scope。
+2. **全文检索**：`search_memory(mode="fts")` 返回命中文献，并按组内最高分展示相对匹配度。
+3. **偏好记忆**：`remember_memory(kind="preference")` 保存到 `user:{id}` Scope。
+4. **个性化推荐**：`search_memory` 召回偏好 → 解析标签 → 逐标签检索文献库。
+
+## 技术栈
 
 | 组件 | 技术 | 作用 |
 |------|------|------|
-| 后端框架 | FastAPI | 提供 RESTful API 服务 |
-| 前端 | HTML/CSS/JavaScript | 用户交互界面 |
-| 语义检索 | seekdb | 向量检索与全文检索 |
-| 用户记忆 | PowerContext | 存储用户偏好和阅读进度 |
-| 部署 | Qoder Sites | 在线发布与访问 |
+| 记忆与检索 | **PowerContext 1.2.0** | Scope / Memory 存储、FTS 检索、偏好召回（核心） |
+| 后端 | FastAPI + uvicorn | REST API，托管前端页面 |
+| 前端 | 原生 HTML / CSS / JavaScript | 导入、检索、偏好、推荐界面 |
+| 存储 | SQLite（PowerContext 内置） | 本地持久化，无需外部数据库 |
+| 开发 / 发布 | Qoder、Qoder Sites | 开发辅助与网站发布 |
 
-## 🚀 快速开始
+> seekdb 未参与功能流程（`pylibseekdb` 仅支持 Linux/macOS）。赛题要求 seekdb 与 PowerContext 至少选择一种，
+> 本项目选择 PowerContext，并在核心链路中实际使用。
 
-### 1. 环境要求
-
-- Python 3.11+
-- pip 或 uv
-
-### 2. 安装依赖
+## 快速开始
 
 ```bash
-cd backend
+git clone -b qoder-competition https://github.com/orange179/powercontext.git
+cd powercontext/qoder/research-assistant
+python -m venv .venv
+.venv\Scripts\activate        # Windows；macOS/Linux 用 source .venv/bin/activate
 pip install -r requirements.txt
+python backend/main.py
+# 打开 http://127.0.0.1:8000
 ```
 
-### 3. 启动服务
+完整环境、演示步骤、API 与故障排查见 [docs/RUNNING.md](docs/RUNNING.md)。
+
+## 验证样例
 
 ```bash
-# 启动后端 API
-python main.py
-
-# 服务将在 http://localhost:8000 启动
-# 访问前端页面: http://localhost:8000/app
+python scripts/test_backend.py
 ```
 
-### 4. 使用示例
+真实输出（PowerContext 1.2.0）：
 
-#### 导入文献数据
-
-1. 打开应用，切换到"导入文献"标签
-2. 复制以下示例 CSV 数据：
-
-```csv
-title,authors,abstract,keywords,notes,tags
-"Attention Is All You Need","Vaswani et al.","The dominant sequence transduction models are based on complex recurrent or convolutional neural networks.","Transformer,Attention,NLP","这篇论文提出了 Transformer 架构","深度学习,NLP,Transformer"
+```text
+[startup] PowerContext ready, search_modes=[auto, fts]
+[import] 200 imported= 7
+[search] 200 hits= 3
+[save prefs] 200 {'status': 'ok', 'preferred_tags': ['NLP', 'Transformer']}
+[recall prefs] 200 {'preferred_tags': ['NLP', 'Transformer']}
+[recommendations] 200 ['Attention Is All You Need', 'BERT: ...', 'GPT-3: ...']
+[health] 200 {'tech': 'PowerContext', ...}
+[DONE] backend + PowerContext end-to-end OK
 ```
 
-3. 粘贴到输入框，点击"导入"
+| 步骤 | 输入 | 预期结果 | 实测 |
+|------|------|----------|------|
+| 导入 | `data/sample_papers.csv` | 7 篇文献写入 PowerContext | 7 篇 ✓ |
+| 检索 | `NLP` | 返回相关文献与匹配度 | 3 条 ✓ |
+| 保存偏好 | `[NLP, Transformer]` | 写入 user1 Scope | revision=1 ✓ |
+| 召回偏好 | — | 从 PowerContext 读回 | NLP, Transformer ✓ |
+| 推荐 | — | 偏好驱动文献检索 | 3 条 ✓ |
 
-#### 语义检索
+## 演示截图
 
-1. 切换到"检索文献"标签
-2. 输入关键词，如："Transformer"、"深度学习"、"NLP"
-3. 系统返回匹配的文献及匹配度分数
+| 导入 7 篇文献 | 检索 NLP | 偏好记忆驱动的推荐 |
+|---|---|---|
+| ![导入](docs/demo-02-import.png) | ![检索](docs/demo-03-search.png) | ![推荐](docs/demo-04-recommendations.png) |
 
-#### 设置个人偏好
+截图来自本地真实运行的应用。
 
-1. 切换到"个人偏好"标签
-2. 输入用户 ID（如：user1）
-3. 选择感兴趣的研究标签
-4. 点击"保存偏好"（PowerContext 会记住你的偏好）
+## 项目结构
 
-## 📋 验证样例
-
-### 样例 1：文献导入与检索
-
-**初始数据**：使用 `data/sample_papers.csv` 中的示例数据
-
-**操作步骤**：
-1. 启动应用
-2. 导入示例 CSV 数据
-3. 检索关键词："Transformer"
-4. 查看返回结果
-
-**预期结果**：
-- 成功导入 7 篇文献
-- 检索返回 "Attention Is All You Need"、"BERT"、"GPT-3" 等相关文献
-- 匹配度分数显示在结果中
-
-**技术验证**：
-- seekdb：语义检索功能正常工作
-- PowerContext：用户偏好被保存和读取
-
-### 样例 2：个性化推荐
-
-**操作步骤**：
-1. 设置用户偏好：选择"深度学习"、"NLP"标签
-2. 保存偏好
-3. 查看推荐文献
-
-**预期结果**：
-- 系统推荐包含"深度学习"、"NLP"标签的文献
-- 推荐理由显示匹配的标签数量
-
-## 🔧 技术集成说明
-
-### seekdb 集成
-
-seekdb 在本项目中提供**语义检索**能力：
-
-```python
-# 实际集成示例（当前为模拟实现）
-from seekdb_client import SeekDBClient
-
-client = SeekDBClient(
-    host="localhost",
-    port=3306,
-    database="research_db"
-)
-
-# 向量检索
-results = client.vector_search(
-    collection="papers",
-    query_vector=embed(query_text),
-    top_k=10
-)
-
-# 混合检索（向量 + 全文 + 结构化）
-results = client.hybrid_search(
-    collection="papers",
-    vector_query=embed(query_text),
-    text_query=query_text,
-    filter={"tags": {"$in": ["NLP", "深度学习"]}}
-)
-```
-
-**作用**：
-- 将文献摘要转换为向量表示
-- 支持语义相似度检索
-- 结合全文检索提高准确率
-
-### PowerContext 集成
-
-PowerContext 在本项目中提供**用户记忆**能力：
-
-```python
-# 实际集成示例（当前为模拟实现）
-from powercontext import PowerContextClient
-
-client = PowerContextClient(
-    api_url="http://localhost:8080",
-    api_key="your-api-key"
-)
-
-# 保存用户偏好
-client.set_memory(
-    user_id="user1",
-    key="preferences",
-    value={
-        "preferred_tags": ["深度学习", "NLP"],
-        "reading_progress": {"paper_id": "123", "progress": 0.8}
-    }
-)
-
-# 读取用户偏好
-prefs = client.get_memory(user_id="user1", key="preferences")
-```
-
-**作用**：
-- 存储用户的研究偏好和兴趣标签
-- 记录阅读进度和学习历史
-- 支持跨会话的个性化推荐
-
-## 📁 项目结构
-
-```
+```text
 research-assistant/
 ├── backend/
-│   ├── main.py              # FastAPI 后端主程序
-│   └── requirements.txt     # Python 依赖
-├── frontend/
-│   └── index.html          # 前端页面
-├── data/
-│   └── sample_papers.csv   # 示例文献数据
+│   ├── main.py              # FastAPI 应用与 PowerContext 记忆/检索流程
+│   └── pc_runtime.py        # 进程内启动 PowerContext Server 并返回客户端
+├── frontend/index.html      # 应用界面
+├── data/sample_papers.csv   # 示例文献
+├── scripts/
+│   ├── test_backend.py      # 端到端验证（导入→检索→偏好→推荐）
+│   └── verify_powercontext.py  # 最小记忆写入/召回验证
 ├── docs/
-│   └── README.md           # 项目文档
-└── README.md               # 本文件
+│   ├── RUNNING.md           # 运行说明
+│   └── demo-*.png           # 演示截图
+├── dist/index.html          # Qoder Sites 项目展示页
+├── requirements.txt         # powercontext[server]==1.2.0
+└── README.md
 ```
 
-## 🎯 核心功能
+## 在线体验
 
-### 1. 文献管理
-- CSV 格式批量导入
-- 自动提取标签和关键词
-- 文献列表浏览
+- 项目网站（Qoder Sites）：<https://research-assistant-vxnv854uztp.qoder.zone>
+- 网站为静态展示与使用说明；完整交互请按上面“快速开始”在本地运行。
 
-### 2. 智能检索
-- 基于 seekdb 的语义检索
-- 关键词匹配与评分
-- 多字段检索（标题、摘要、关键词、标签）
+## 开发记录
 
-### 3. 个性化推荐
-- 基于 PowerContext 的用户偏好记忆
-- 标签匹配推荐算法
-- 跨会话偏好保持
+- Qoder UID：`nick4039665807`
+- 开发过程：Qoder 协助完成需求梳理、PowerContext 进程内集成、后端 API、前端界面、截图与发布验证。
+- 详细记录见 [docs/QODER_LOG.md](docs/QODER_LOG.md)（可另附 Qoder 对话截图/录屏）。
 
-### 4. 进度追踪
-- 阅读进度记录
-- 学习历史管理
-- 数据持久化
-
-## 🌐 在线体验
-
-本项目已通过 **Qoder Sites** 发布：
-
-🔗 **访问地址**：[https://research-assistant-vxnv854uztp.qoder.zone](https://research-assistant-vxnv854uztp.qoder.zone)
-
-## 📝 开发记录
-
-本项目使用 **Qoder** 开发，主要开发环节：
-
-1. **需求分析**：Qoder 帮助梳理用户需求和功能设计
-2. **架构设计**：Qoder 提供技术栈选型和架构建议
-3. **代码实现**：
-   - 后端 API：Qoder 生成 FastAPI 代码框架
-   - 前端页面：Qoder 实现响应式 UI 设计
-   - 数据模型：Qoder 设计 Pydantic 模型
-4. **集成调试**：Qoder 协助 seekdb 和 PowerContext 集成
-5. **部署发布**：通过 Qoder Sites 一键发布
-
-**Qoder 账号 UID**：`nick4039665807`
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📄 许可证
+## 许可证
 
 MIT License
-
-## 🙏 致谢
-
-- **seekdb**：提供强大的语义检索能力
-- **PowerContext**：提供用户记忆和上下文管理
-- **Qoder**：提供智能开发辅助和部署平台
-- **OceanBase**：提供技术支持和竞赛平台
-
----
-
-**Built with ❤️ using Qoder**

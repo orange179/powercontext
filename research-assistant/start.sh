@@ -1,16 +1,21 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "🚀 启动文献整理助手..."
-echo ""
+cd "$(dirname "$0")"
 
-cd backend
+echo "启动文献整理助手..."
+echo "首次运行会安装依赖（PowerContext 1.2.0）"
 
-echo "📦 安装依赖..."
-pip install -r requirements.txt
+if [ ! -d ".venv" ]; then
+  python -m venv .venv
+fi
 
-echo ""
-echo "🌐 启动服务..."
-echo "访问地址: http://localhost:8000/app"
-echo ""
+if [ -x ".venv/bin/python" ]; then
+  PY=.venv/bin/python
+else
+  PY=.venv/Scripts/python.exe
+fi
 
-python main.py
+"$PY" -m pip install -r requirements.txt
+echo "服务地址: http://127.0.0.1:8000"
+exec "$PY" backend/main.py

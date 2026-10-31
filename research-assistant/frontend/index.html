@@ -283,7 +283,7 @@
     <div class="container">
         <header>
             <h1>📚 文献整理助手</h1>
-            <p>基于 seekdb + PowerContext 的智能文献检索与管理工具</p>
+            <p>基于 PowerContext 的智能文献检索与记忆管理工具</p>
         </header>
 
         <div class="stats">
@@ -325,6 +325,7 @@
                     <textarea id="csvInput" placeholder="title,authors,abstract,keywords,notes,tags&#10;论文标题,作者姓名,摘要内容,关键词1;关键词2,阅读笔记,标签1,标签2"></textarea>
                 </div>
                 <button class="primary" onclick="importDocuments()">导入</button>
+                <button class="primary" style="background:#4caf50; margin-left:10px;" onclick="loadSampleCsv()">填入示例数据</button>
                 <div id="importResult" style="margin-top: 15px;"></div>
             </div>
 
@@ -340,7 +341,9 @@
                     <div id="preferenceTags" class="preference-tags"></div>
                 </div>
                 <button class="primary" onclick="savePreferences()">保存偏好</button>
+                <button class="primary" style="background:#4caf50; margin-left:10px;" onclick="loadRecommendations()">查看推荐</button>
                 <div id="preferenceResult" style="margin-top: 15px;"></div>
+                <div id="recommendationList" class="document-list" style="margin-top: 15px;"></div>
             </div>
 
             <div id="listTab" class="tab-content">
@@ -350,7 +353,7 @@
         </div>
 
         <footer>
-            <p>Powered by seekdb (语义检索) + PowerContext (用户记忆) | Built with Qoder</p>
+            <p>Powered by PowerContext（文献检索 + 用户记忆） | Built with Qoder</p>
         </footer>
     </div>
 
@@ -372,6 +375,17 @@
                 loadDocuments();
             } else if (tabName === 'preferences') {
                 loadPreferences();
+            }
+        }
+
+        // 填入内置示例数据
+        async function loadSampleCsv() {
+            try {
+                const response = await fetch('/samples/sample_papers.csv');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                document.getElementById('csvInput').value = await response.text();
+            } catch (error) {
+                showAlert('importResult', `示例数据加载失败: ${error.message}`, 'error');
             }
         }
 
@@ -488,13 +502,48 @@
         async function loadPreferences() {
             const userId = document.getElementById('userId').value;
             try {
+                const docsResponse = await fetch(`${API_BASE}/documents`);
+                const docs = await docsResponse.json();
+                allTags = new Set();
+                docs.forEach(doc => doc.tags.forEach(tag => allTags.add(tag)));
+
                 const response = await fetch(`${API_BASE}/user/${userId}/preferences`);
                 const prefs = await response.json();
-                
+
                 selectedTags = new Set(prefs.preferred_tags || []);
                 renderPreferenceTags();
             } catch (error) {
                 console.error('加载偏好失败:', error);
+            }
+        }
+
+        // 基于 PowerContext 记忆召回生成推荐
+        async function loadRecommendations() {
+            const userId = document.getElementById('userId').value;
+            if (!userId.trim()) {
+                showAlert('preferenceResult', '请输入用户 ID', 'error');
+                return;
+            }
+            const container = document.getElementById('recommendationList');
+            try {
+                const response = await fetch(`${API_BASE}/user/${userId}/recommendations`);
+                const data = await response.json();
+                if (!data.recommendations || data.recommendations.length === 0) {
+                    container.innerHTML = '<div class="empty-state">暂无推荐，请先保存偏好标签</div>';
+                    return;
+                }
+                container.innerHTML = data.recommendations.map(r => `
+                    <div class="document-item">
+                        <h3>${r.document.title} <span class="score">命中标签: ${r.matched_tag}</span></h3>
+                        <div class="meta">${r.document.authors} | ${r.document.created_at.split('T')[0]}</div>
+                        <div class="abstract">${r.document.abstract}</div>
+                        <div class="tags">
+                            ${r.document.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state">推荐加载失败: ${error.message}</div>`;
             }
         }
 
