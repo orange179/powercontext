@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文献整理助手 · 基于 PowerContext 的文献检索与记忆</title>
+<meta name="description" content="文献整理助手：用 PowerContext 保存文献与用户偏好记忆，支持全文检索与跨会话个性化推荐。">
+<style>
+  :root {
+    --ink: #16182b;
+    --muted: #5b6178;
+    --line: #e4e7f2;
+    --brand: #4f5bd5;
+    --brand-soft: #eef0ff;
+    --bg: #f7f8fc;
+    --code: #14162a;
+    --green: #17845c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--brand); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  header.hero {
+    background:
+      radial-gradient(900px 320px at 85% -10%, rgba(79, 91, 213, .18), transparent 60%),
+      radial-gradient(700px 300px at 5% 0%, rgba(23, 132, 92, .12), transparent 55%),
+      #fff;
+    border-bottom: 1px solid var(--line);
+    padding: 56px 0 44px;
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; letter-spacing: .04em; color: var(--brand);
+    background: var(--brand-soft); border: 1px solid #dcdfff;
+    padding: 5px 12px; border-radius: 999px; margin-bottom: 18px;
+  }
+  h1 { font-size: clamp(30px, 4.6vw, 46px); line-height: 1.2; letter-spacing: -.02em; }
+  .lead { color: var(--muted); font-size: 17px; max-width: 720px; margin-top: 14px; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 20px; border-radius: 10px; font-size: 15px; font-weight: 600;
+    border: 1px solid transparent; transition: .18s ease;
+  }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { background: #3f4ac4; text-decoration: none; }
+  .btn-ghost { border-color: var(--line); background: #fff; color: var(--ink); }
+  .btn-ghost:hover { border-color: #c9cdec; text-decoration: none; }
+  nav.jump {
+    position: sticky; top: 0; z-index: 9;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.jump .wrap { display: flex; gap: 22px; overflow-x: auto; padding-top: 10px; padding-bottom: 10px; }
+  nav.jump a { white-space: nowrap; color: var(--muted); font-size: 14px; }
+  nav.jump a:hover { color: var(--brand); text-decoration: none; }
+  section { padding: 46px 0; border-bottom: 1px solid var(--line); }
+  h2 { font-size: 24px; letter-spacing: -.01em; margin-bottom: 8px; }
+  .sub { color: var(--muted); margin-bottom: 26px; max-width: 760px; }
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .card h3 { font-size: 17px; margin-bottom: 6px; }
+  .card p { color: var(--muted); font-size: 15px; }
+  .num {
+    display: inline-flex; width: 26px; height: 26px; border-radius: 8px;
+    align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+    color: var(--brand); background: var(--brand-soft); margin-bottom: 10px;
+  }
+  .flow {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin: 22px 0 8px; font-size: 14px;
+  }
+  .flow span.step {
+    background: #fff; border: 1px solid var(--line); border-radius: 9px;
+    padding: 8px 14px; font-weight: 600;
+  }
+  .flow span.arrow { color: #9aa0b8; }
+  .flow span.pc { border-color: #cfd4ff; background: var(--brand-soft); color: #3440b8; }
+  pre {
+    background: var(--code); color: #e8eaf6; border-radius: 12px;
+    padding: 18px 20px; overflow-x: auto; font-size: 13px; line-height: 1.65;
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, monospace;
+  }
+  pre .c { color: #8b93c7; }
+  pre .k { color: #9ecbff; }
+  pre .g { color: #7ee2b8; }
+  code.inline {
+    background: #eceefb; border-radius: 5px; padding: 1px 6px;
+    font-family: ui-monospace, Consolas, monospace; font-size: .92em;
+  }
+  figure { margin: 0; }
+  figure img {
+    width: 100%; display: block; border-radius: 12px;
+    border: 1px solid var(--line); background: #fff;
+  }
+  figcaption { color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14.5px; }
+  th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #fafbff; font-weight: 600; color: var(--muted); }
+  .table-wrap { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .tagline { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .tagline span { font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: #fff; padding: 4px 11px; border-radius: 999px; }
+  footer { padding: 34px 0 48px; color: var(--muted); font-size: 14px; }
+  .check { color: var(--green); font-weight: 700; }
+  .note { font-size: 13.5px; color: var(--muted); background: #fbfcff; border-left: 3px solid #cfd4ff; padding: 10px 14px; border-radius: 0 8px 8px 0; }
+  @media (max-width: 640px) { section { padding: 34px 0; } header.hero { padding: 40px 0 32px; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Qoder 综合赛道 · PowerContext 集成</div>
+    <h1>文献整理助手</h1>
+    <p class="lead">
+      把散落的论文导入成可检索的知识库，并用 <strong>PowerContext 记忆</strong>记住你的研究方向。
+      文献入库、全文检索、偏好保存与跨会话推荐，全部由 PowerContext 的 Memory / Scope 承载。
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#quickstart">本地体验入口</a>
+      <a class="btn btn-ghost" href="https://github.com/orange179/powercontext/tree/qoder-competition/qoder/research-assistant" target="_blank" rel="noreferrer">代码仓库</a>
+      <a class="btn btn-ghost" href="#demo">演示截图</a>
+    </div>
+    <div class="tagline">
+      <span>Python 3.11+</span><span>FastAPI</span><span>PowerContext 1.2.0</span><span>SQLite 进程内运行</span><span>Windows / macOS / Linux</span>
+    </div>
+  </div>
+</header>
+
+<nav class="jump">
+  <div class="wrap">
+    <a href="#problem">问题</a>
+    <a href="#features">核心功能</a>
+    <a href="#integration">技术集成</a>
+    <a href="#evidence">验证样例</a>
+    <a href="#demo">演示截图</a>
+    <a href="#quickstart">快速体验</a>
+    <a href="#repo">代码仓库</a>
+  </div>
+</nav>
+
+<section id="problem">
+  <div class="wrap">
+    <h2>解决的问题</h2>
+    <p class="sub">研究者的文献和偏好都散落在不同工具里，检索与推荐每次都要重新描述。</p>
+    <div class="grid grid-3">
+      <div class="card">
+        <div class="num">01</div>
+        <h3>文献分散、难以检索</h3>
+        <p>论文列表散落在表格和笔记里。本项目把每篇文献写入 PowerContext Memory，用统一接口做全文检索。</p>
+      </div>
+      <div class="card">
+        <div class="num">02</div>
+        <h3>兴趣偏好无法跨会话保留</h3>
+        <p>每次打开工具都要重新选择研究方向。本项目把偏好写进用户独立的 Scope，下次打开自动召回。</p>
+      </div>
+      <div class="card">
+        <div class="num">03</div>
+        <h3>推荐缺少“记忆驱动”</h3>
+        <p>推荐不是写死的规则：先从 PowerContext 召回偏好，再用偏好标签检索文献库，形成可解释的推荐链路。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>核心功能</h2>
+    <p class="sub">四个功能都围绕 PowerContext 的 Scope / Memory 展开，而不是外围的模拟逻辑。</p>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>CSV 文献批量导入</h3>
+        <p>导入的每篇文献都会调用 <code class="inline">remember_memory</code> 写入共享“文献库” Scope，类型为 <code class="inline">paper</code>。</p>
+      </div>
+      <div class="card">
+        <div class="num">2</div>
+        <h3>全文检索与匹配度</h3>
+        <p>检索调用 <code class="inline">search_memory(mode="fts")</code>，直接返回 PowerContext 命中结果，并按组内最高分换算相对匹配度。</p>
+      </div>
+      <div class="card">
+        <div class="num">3</div>
+        <h3>用户偏好记忆</h3>
+        <p>每个用户 ID 对应独立 Scope，偏好以 <code class="inline">preference</code> Memory 保存，可随时召回并复现。</p>
+      </div>
+      <div class="card">
+        <div class="num">4</div>
+        <h3>记忆驱动的个性化推荐</h3>
+        <p>先召回偏好 Memory，解析出研究标签，再逐标签检索文献库，返回带命中标签的推荐结果。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="integration">
+  <div class="wrap">
+    <h2>PowerContext 如何实际发挥作用</h2>
+    <p class="sub">
+      项目选择 PowerContext 作为核心上下文与记忆组件（赛题要求 seekdb / PowerContext 至少其一）。
+      它通过进程内 ASGI + SQLite 运行，无需额外数据库或服务，<strong>不是只安装或只测试连接</strong>。
+    </p>
+
+    <div class="flow">
+      <span class="step">CSV 导入</span><span class="arrow">→</span>
+      <span class="step pc">PowerContext remember_memory (paper)</span><span class="arrow">→</span>
+      <span class="step">共享文献库 Scope</span>
+    </div>
+    <div class="flow">
+      <span class="step">关键词</span><span class="arrow">→</span>
+      <span class="step pc">PowerContext search_memory (FTS)</span><span class="arrow">→</span>
+      <span class="step">命中文献 + 匹配度</span>
+    </div>
+    <div class="flow">
+      <span class="step">保存偏好</span><span class="arrow">→</span>
+      <span class="step pc">PowerContext remember_memory (preference)</span><span class="arrow">→</span>
+      <span class="step">用户 Scope</span><span class="arrow">→</span>
+      <span class="step pc">search_memory 召回偏好</span><span class="arrow">→</span>
+      <span class="step">按标签检索文献 → 推荐</span>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:26px;">
+      <div>
+        <h3 style="margin-bottom:10px;">核心调用（后端真实代码）</h3>
+<pre><span class="c"># backend/main.py</span>
+<span class="k">await</span> pc.remember_memory(RememberMemoryRequest(
+    scope_id=state[<span class="g">"library_scope"</span>],
+    kind=<span class="g">"paper"</span>,
+    text=title_and_abstract,
+))
+
+hits = <span class="k">await</span> pc.search_memory(SearchMemoryRequest(
+    scope_id=state[<span class="g">"library_scope"</span>],
+    query=query,
+    limit=top_k,
+    mode=<span class="g">"fts"</span>,
+))</pre>
+      </div>
+      <div>
+        <h3 style="margin-bottom:10px;">运行形态</h3>
+        <div class="card" style="padding:18px 20px;">
+          <p style="margin-bottom:10px;">PowerContext Server 以 ASGI 应用在应用进程内启动，数据落在本地 SQLite：</p>
+          <p><code class="inline">create_server_app()</code> + <code class="inline">httpx.ASGITransport</code> + lifespan</p>
+          <p style="margin-top:10px;"><code class="inline">sqlite+aiosqlite:///…/powercontext.db</code></p>
+          <p style="margin-top:10px;">因此单机一条命令即可完整体验检索与记忆，不需要 Docker、外部数据库或 API Key。</p>
+        </div>
+        <p class="note" style="margin-top:14px;">
+          本项目的核心记忆与检索能力由 PowerContext 提供；seekdb 仅作为可选的后续生产存储方向，未参与当前功能流程。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="evidence">
+  <div class="wrap">
+    <h2>验证样例与证据</h2>
+    <p class="sub">以下为仓库内可复现的验证脚本真实输出（PowerContext 1.2.0）。</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>步骤</th><th>操作</th><th>预期结果</th><th>实测</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>导入 <code class="inline">data/sample_papers.csv</code></td><td>7 篇文献写入文献库 Scope</td><td class="check">imported = 7 ✓</td></tr>
+          <tr><td>2</td><td>检索 <code class="inline">NLP</code></td><td>返回含 NLP 的文献与匹配度</td><td class="check">3 条命中 ✓</td></tr>
+          <tr><td>3</td><td>保存偏好 <code class="inline">[NLP, Transformer]</code></td><td>偏好写入用户 Scope</td><td class="check">memory revision = 1 ✓</td></tr>
+          <tr><td>4</td><td>重新读取偏好</td><td>从 PowerContext 召回偏好</td><td class="check">NLP, Transformer ✓</td></tr>
+          <tr><td>5</td><td>请求推荐</td><td>偏好记忆驱动文献检索</td><td class="check">3 条推荐 ✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3 style="margin:24px 0 10px;">终端输出（scripts/test_backend.py）</h3>
+<pre><span class="g">[startup]</span> PowerContext ready, search_modes=[auto, fts]
+<span class="g">[import]</span> 200 imported=7
+<span class="g">[search]</span> 200 hits=3
+<span class="g">[save prefs]</span> 200 preferred_tags=['NLP', 'Transformer']
+<span class="g">[recall prefs]</span> 200 preferred_tags=['NLP', 'Transformer']
+<span class="g">[recommendations]</span> 200 Attention Is All You Need / BERT / GPT-3
+<span class="g">[DONE]</span> backend + PowerContext end-to-end OK</pre>
+    <p class="note" style="margin-top:16px;">
+      复现命令：<code class="inline">python scripts/test_backend.py</code>；另有
+      <code class="inline">python scripts/verify_powercontext.py</code> 单独验证记忆写入与召回。
+    </p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <h2>演示截图</h2>
+    <p class="sub">以下截图来自本地真实运行的应用（非静态模拟）。</p>
+    <div class="shots">
+      <figure>
+        <img src="assets/demo-02-import.png" alt="导入 7 篇文献后的界面">
+        <figcaption>导入 7 篇示例文献：统计更新为 7 篇 / 15 个标签，数据已写入 PowerContext。</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/demo-03-search.png" alt="检索 NLP 的命中结果">
+        <figcaption>检索 “NLP”：由 PowerContext FTS 返回 3 篇文献及相对匹配度。</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/demo-04-recommendations.png" alt="基于偏好记忆的推荐">
+        <figcaption>保存偏好后跨请求召回记忆，再按标签检索文献，生成 3 条推荐。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart">
+  <div class="wrap">
+    <h2>体验入口</h2>
+    <p class="sub">网站为静态展示页，完整功能在本地运行（PowerContext 需在 Python 进程中启动）。</p>
+<pre><span class="c"># 1. 获取代码（分支基于 2026-competition-ecosystem）</span>
+git clone -b qoder-competition https://github.com/orange179/powercontext.git
+<span class="k">cd</span> powercontext/qoder/research-assistant
+
+<span class="c"># 2. 安装依赖（Python 3.11+，含 PowerContext 1.2.0）</span>
+python -m venv .venv
+.venv\Scripts\activate          <span class="c"># Windows</span>
+<span class="c"># source .venv/bin/activate     # macOS / Linux</span>
+pip install -r requirements.txt
+
+<span class="c"># 3. 启动</span>
+python backend/main.py
+<span class="c"># 打开 http://127.0.0.1:8000</span>
+
+<span class="c"># 4. 可选：一键验证 PowerContext 链路</span>
+python scripts/test_backend.py</pre>
+    <p class="note" style="margin-top:14px;">
+      使用说明、API 列表与故障排查见仓库
+      <a href="https://github.com/orange179/powercontext/blob/qoder-competition/qoder/research-assistant/docs/RUNNING.md" target="_blank" rel="noreferrer">docs/RUNNING.md</a>。
+    </p>
+  </div>
+</section>
+
+<section id="repo">
+  <div class="wrap">
+    <h2>代码仓库与开发记录</h2>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>仓库</h3>
+        <p style="margin-bottom:10px;">项目位于竞赛生态分支的 <code class="inline">qoder/research-assistant</code> 目录。</p>
+        <p><a href="https://github.com/orange179/powercontext/tree/qoder-competition/qoder/research-assistant" target="_blank" rel="noreferrer">github.com/orange179/powercontext → qoder-competition</a></p>
+      </div>
+      <div class="card">
+        <h3>Qoder 开发记录</h3>
+        <p>项目使用 Qoder 完成需求梳理、后端 PowerContext 集成、前端页面与部署验证。</p>
+        <p style="margin-top:10px;">Qoder UID：<strong>nick4039665807</strong></p>
+        <p style="margin-top:10px;"><a href="https://github.com/orange179/powercontext/blob/qoder-competition/qoder/research-assistant/docs/QODER_LOG.md" target="_blank" rel="noreferrer">开发记录文档</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    文献整理助手 · 基于 PowerContext 1.2.0 · Built with Qoder · OceanBase 2026 训练营综合赛道
+  </div>
+</footer>
+
+</body>
+</html>

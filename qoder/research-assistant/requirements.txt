@@ -1,0 +1,3 @@
+# PowerContext 提供记忆、Scope 与检索能力；server extras 已包含
+# FastAPI / uvicorn / httpx / aiosqlite 等运行依赖。
+powercontext[server]==1.2.0

@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文献整理助手 - Research Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button.primary {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button.primary:hover {
+            background: #5568d3;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+        }
+
+        .document-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .document-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .document-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .document-item h3 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .document-item .meta {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .document-item .abstract {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
+
+        .score {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .preference-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .preference-tag {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .preference-tag.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 文献整理助手</h1>
+            <p>基于 PowerContext 的智能文献检索与记忆管理工具</p>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number" id="docCount">0</div>
+                <div class="label">文献总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="searchCount">0</div>
+                <div class="label">检索次数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="tagCount">0</div>
+                <div class="label">标签数量</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('search')">🔍 检索文献</button>
+                <button class="tab" onclick="switchTab('import')">📥 导入文献</button>
+                <button class="tab" onclick="switchTab('preferences')">⚙️ 个人偏好</button>
+                <button class="tab" onclick="switchTab('list')">📋 文献列表</button>
+            </div>
+
+            <div id="searchTab" class="tab-content active">
+                <h2>语义检索</h2>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="输入关键词，如：机器学习、深度学习、NLP...">
+                    <button class="primary" onclick="searchDocuments()">检索</button>
+                </div>
+                <div id="searchResults" class="document-list"></div>
+            </div>
+
+            <div id="importTab" class="tab-content">
+                <h2>导入 CSV 文献数据</h2>
+                <div class="form-group">
+                    <label>CSV 内容（列：title, authors, abstract, keywords, notes, tags）</label>
+                    <textarea id="csvInput" placeholder="title,authors,abstract,keywords,notes,tags&#10;论文标题,作者姓名,摘要内容,关键词1;关键词2,阅读笔记,标签1,标签2"></textarea>
+                </div>
+                <button class="primary" onclick="importDocuments()">导入</button>
+                <button class="primary" style="background:#4caf50; margin-left:10px;" onclick="loadSampleCsv()">填入示例数据</button>
+                <div id="importResult" style="margin-top: 15px;"></div>
+            </div>
+
+            <div id="preferencesTab" class="tab-content">
+                <h2>个人偏好设置</h2>
+                <p style="color: #666; margin-bottom: 15px;">选择你感兴趣的研究方向，系统将为你推荐相关文献</p>
+                <div class="form-group">
+                    <label>用户 ID</label>
+                    <input type="text" id="userId" placeholder="输入你的用户 ID" value="user1">
+                </div>
+                <div class="form-group">
+                    <label>偏好标签（点击选择）</label>
+                    <div id="preferenceTags" class="preference-tags"></div>
+                </div>
+                <button class="primary" onclick="savePreferences()">保存偏好</button>
+                <button class="primary" style="background:#4caf50; margin-left:10px;" onclick="loadRecommendations()">查看推荐</button>
+                <div id="preferenceResult" style="margin-top: 15px;"></div>
+                <div id="recommendationList" class="document-list" style="margin-top: 15px;"></div>
+            </div>
+
+            <div id="listTab" class="tab-content">
+                <h2>所有文献</h2>
+                <div id="documentList" class="document-list"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Powered by PowerContext（文献检索 + 用户记忆） | Built with Qoder</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let allTags = new Set();
+        let selectedTags = new Set();
+        let searchCount = 0;
+
+        // 切换标签页
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            if (tabName === 'list') {
+                loadDocuments();
+            } else if (tabName === 'preferences') {
+                loadPreferences();
+            }
+        }
+
+        // 填入内置示例数据
+        async function loadSampleCsv() {
+            try {
+                const response = await fetch('/samples/sample_papers.csv');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                document.getElementById('csvInput').value = await response.text();
+            } catch (error) {
+                showAlert('importResult', `示例数据加载失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 导入文献
+        async function importDocuments() {
+            const csvContent = document.getElementById('csvInput').value;
+            if (!csvContent.trim()) {
+                showAlert('importResult', '请输入 CSV 内容', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/documents/import`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(csvContent)
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showAlert('importResult', `成功导入 ${data.length} 篇文献`, 'success');
+                    document.getElementById('csvInput').value = '';
+                    updateStats();
+                    
+                    // 收集标签
+                    data.forEach(doc => {
+                        doc.tags.forEach(tag => allTags.add(tag));
+                    });
+                    renderPreferenceTags();
+                } else {
+                    showAlert('importResult', `导入失败: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('importResult', `导入失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 检索文献
+        async function searchDocuments() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                showAlert('searchResults', '请输入检索关键词', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, top_k: 10 })
+                });
+
+                const results = await response.json();
+                searchCount++;
+                document.getElementById('searchCount').textContent = searchCount;
+                
+                if (results.length === 0) {
+                    document.getElementById('searchResults').innerHTML = '<div class="empty-state">未找到相关文献</div>';
+                } else {
+                    renderSearchResults(results);
+                }
+            } catch (error) {
+                showAlert('searchResults', `检索失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 渲染检索结果
+        function renderSearchResults(results) {
+            const html = results.map(r => `
+                <div class="document-item">
+                    <h3>${r.document.title} <span class="score">匹配度: ${(r.score * 100).toFixed(0)}%</span></h3>
+                    <div class="meta">${r.document.authors} | ${r.document.created_at.split('T')[0]}</div>
+                    <div class="abstract">${r.document.abstract}</div>
+                    <div class="tags">
+                        ${r.document.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('searchResults').innerHTML = html;
+        }
+
+        // 加载文献列表
+        async function loadDocuments() {
+            try {
+                const response = await fetch(`${API_BASE}/documents`);
+                const docs = await response.json();
+                
+                if (docs.length === 0) {
+                    document.getElementById('documentList').innerHTML = '<div class="empty-state">暂无文献，请先导入</div>';
+                } else {
+                    renderDocumentList(docs);
+                }
+            } catch (error) {
+                showAlert('documentList', `加载失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 渲染文献列表
+        function renderDocumentList(docs) {
+            const html = docs.map(doc => `
+                <div class="document-item">
+                    <h3>${doc.title}</h3>
+                    <div class="meta">${doc.authors} | ${doc.created_at.split('T')[0]}</div>
+                    <div class="abstract">${doc.abstract}</div>
+                    <div class="tags">
+                        ${doc.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('documentList').innerHTML = html;
+        }
+
+        // 加载用户偏好
+        async function loadPreferences() {
+            const userId = document.getElementById('userId').value;
+            try {
+                const docsResponse = await fetch(`${API_BASE}/documents`);
+                const docs = await docsResponse.json();
+                allTags = new Set();
+                docs.forEach(doc => doc.tags.forEach(tag => allTags.add(tag)));
+
+                const response = await fetch(`${API_BASE}/user/${userId}/preferences`);
+                const prefs = await response.json();
+
+                selectedTags = new Set(prefs.preferred_tags || []);
+                renderPreferenceTags();
+            } catch (error) {
+                console.error('加载偏好失败:', error);
+            }
+        }
+
+        // 基于 PowerContext 记忆召回生成推荐
+        async function loadRecommendations() {
+            const userId = document.getElementById('userId').value;
+            if (!userId.trim()) {
+                showAlert('preferenceResult', '请输入用户 ID', 'error');
+                return;
+            }
+            const container = document.getElementById('recommendationList');
+            try {
+                const response = await fetch(`${API_BASE}/user/${userId}/recommendations`);
+                const data = await response.json();
+                if (!data.recommendations || data.recommendations.length === 0) {
+                    container.innerHTML = '<div class="empty-state">暂无推荐，请先保存偏好标签</div>';
+                    return;
+                }
+                container.innerHTML = data.recommendations.map(r => `
+                    <div class="document-item">
+                        <h3>${r.document.title} <span class="score">命中标签: ${r.matched_tag}</span></h3>
+                        <div class="meta">${r.document.authors} | ${r.document.created_at.split('T')[0]}</div>
+                        <div class="abstract">${r.document.abstract}</div>
+                        <div class="tags">
+                            ${r.document.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state">推荐加载失败: ${error.message}</div>`;
+            }
+        }
+
+        // 渲染偏好标签
+        function renderPreferenceTags() {
+            const html = Array.from(allTags).map(tag => `
+                <span class="preference-tag ${selectedTags.has(tag) ? 'selected' : ''}" 
+                      onclick="toggleTag('${tag}')">${tag}</span>
+            `).join('');
+            document.getElementById('preferenceTags').innerHTML = html || '<span style="color: #888;">暂无标签，请先导入文献</span>';
+        }
+
+        // 切换标签选择
+        function toggleTag(tag) {
+            if (selectedTags.has(tag)) {
+                selectedTags.delete(tag);
+            } else {
+                selectedTags.add(tag);
+            }
+            renderPreferenceTags();
+        }
+
+        // 保存偏好
+        async function savePreferences() {
+            const userId = document.getElementById('userId').value;
+            if (!userId.trim()) {
+                showAlert('preferenceResult', '请输入用户 ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/user/${userId}/preferences`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        preferred_tags: Array.from(selectedTags),
+                        reading_progress: {},
+                        search_history: []
+                    })
+                });
+
+                if (response.ok) {
+                    showAlert('preferenceResult', '偏好已保存（PowerContext 记忆存储）', 'success');
+                } else {
+                    showAlert('preferenceResult', '保存失败', 'error');
+                }
+            } catch (error) {
+                showAlert('preferenceResult', `保存失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 更新统计
+        async function updateStats() {
+            try {
+                const response = await fetch(`${API_BASE}/documents`);
+                const docs = await response.json();
+                document.getElementById('docCount').textContent = docs.length;
+                
+                const tags = new Set();
+                docs.forEach(doc => doc.tags.forEach(tag => tags.add(tag)));
+                document.getElementById('tagCount').textContent = tags.size;
+            } catch (error) {
+                console.error('更新统计失败:', error);
+            }
+        }
+
+        // 显示提示
+        function showAlert(elementId, message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const html = `<div class="alert ${alertClass}">${message}</div>`;
+            document.getElementById(elementId).innerHTML = html;
+            setTimeout(() => {
+                document.getElementById(elementId).innerHTML = '';
+            }, 3000);
+        }
+
+        // 初始化
+        updateStats();
+    </script>
+</body>
+</html>
