@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Download the pinned all-MiniLM-L6-v2 ONNX export used by the app.
+ * Download the pinned bge-small-zh-v1.5 ONNX export used by the app.
  *
  * Model: Xenova/bge-small-zh-v1.5 (ONNX export of BAAI/bge-small-zh-v1.5, 512-dim Chinese embedding model)
  * Revision: 75c43b069aac4d136ba6bc1122f995fedcfd2781
@@ -38,7 +38,7 @@ const ONNX_FILES = {
   int8: 'onnx/model_int8.onnx',
 };
 
-// Exact sizes observed for revision 751bff3 (checked against the local manifest after download).
+// Exact sizes for the pinned revision, verified against the local manifest after download.
 const EXPECTED_BYTES = {
   [ONNX_FILES.fp32]: 94851877,
   [ONNX_FILES.fp16]: 47497427,

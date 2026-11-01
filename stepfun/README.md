@@ -153,6 +153,7 @@ WebGPU 混合检索在预热前的会话首查为 82.2 ms（含 GPU 管线首次
 
 ```bash
 npm run typecheck             # TypeScript 检查
+npm run fetch:models --all    # 离线质量评测需要 FP32 基线（FP16/INT8 仓库已含）
 npm run eval:quality          # 生成 public/data/quality.json 与 data/results/quality-*.json
 npm run dev                   # 应用内运行查询 / 导入基准，可导出原始 JSON
 ```
