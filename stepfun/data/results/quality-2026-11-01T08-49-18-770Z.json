@@ -1,0 +1,1568 @@
+{
+  "generatedAt": "2026-11-01T08:49:16.966Z",
+  "model": {
+    "id": "Xenova/bge-small-zh-v1.5",
+    "revision": "75c43b069aac4d136ba6bc1122f995fedcfd2781",
+    "dimensions": 512,
+    "queryPrefix": "为这个句子生成表示以用于检索相关文章：",
+    "source": "https://huggingface.co/Xenova/bge-small-zh-v1.5/tree/75c43b069aac4d136ba6bc1122f995fedcfd2781"
+  },
+  "config": {
+    "corpusSize": 60,
+    "queryCount": 24,
+    "topK": 10,
+    "metrics": "cosine similarity over all corpus documents; qrels are graded 2/1",
+    "pooling": "mean",
+    "normalize": true,
+    "wasmThreads": 1,
+    "runtime": "Node v24.15.0 / Transformers.js (onnxruntime-node CPU)"
+  },
+  "onnxSizesBytes": {
+    "fp16": 47497427,
+    "int8": 23903394,
+    "fp32": 94851877
+  },
+  "precisions": {
+    "fp32": {
+      "metrics": {
+        "Recall@5": 0.6875,
+        "Recall@10": 0.75,
+        "nDCG@10": 0.7556067740733375,
+        "MRR@10": 0.8958333333333334
+      },
+      "vectorFidelityVsFp32": null,
+      "timings": {
+        "loadMs": 206,
+        "documentEmbeddingMs": 305,
+        "queryEmbeddingMs": 64,
+        "documentEmbeddingMsPerDoc": 5.08
+      },
+      "batches": {
+        "documentBatchMs": [
+          115.99,
+          76.57,
+          65.57,
+          43.72
+        ],
+        "queryBatchMs": [
+          41.28,
+          21.81
+        ]
+      },
+      "perQuery": [
+        {
+          "id": "q01",
+          "query": "seekdb 如何在数据库内部完成向量和全文的混合检索",
+          "recall5": 0.3333333333333333,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7962044920938869,
+          "rr": 1,
+          "top10": [
+            "seekdb-hybrid",
+            "nodejs",
+            "seekdb-metadata",
+            "sql-vector",
+            "oceanbase-intro",
+            "seekdb-embedded",
+            "seekdb-sdk",
+            "seekdb-refresh",
+            "seekdb-vector-index",
+            "seekdb-fulltext"
+          ]
+        },
+        {
+          "id": "q02",
+          "query": "HNSW 向量索引支持哪些距离度量",
+          "recall5": 0.3333333333333333,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7962044920938869,
+          "rr": 1,
+          "top10": [
+            "seekdb-vector-index",
+            "embedding-dim",
+            "sql-vector",
+            "seekdb-hybrid",
+            "http-json",
+            "oceanbase-intro",
+            "seekdb-fulltext",
+            "web-worker",
+            "seekdb-refresh",
+            "hnsw"
+          ]
+        },
+        {
+          "id": "q03",
+          "query": "增量写入后如何让新文档立刻可以被检索到",
+          "recall5": 0.5,
+          "recall10": 1,
+          "ndcg10": 0.91311732856428,
+          "rr": 1,
+          "top10": [
+            "seekdb-refresh",
+            "rag",
+            "seekdb-metadata",
+            "seekdb-collections",
+            "sql-vector",
+            "embedding-dim",
+            "http-json",
+            "seekdb-sdk",
+            "quantization-tradeoff",
+            "stepfun-open"
+          ]
+        },
+        {
+          "id": "q04",
+          "query": "浏览器没有 WebGPU 时怎样运行嵌入模型",
+          "recall5": 0.3333333333333333,
+          "recall10": 0.3333333333333333,
+          "ndcg10": 0.24207625393180188,
+          "rr": 1,
+          "top10": [
+            "webgpu",
+            "seekdb-deployment",
+            "seekdb-embedded",
+            "transformersjs",
+            "seekdb-server",
+            "model-load",
+            "stepfun-step",
+            "nodejs",
+            "stepfun-open",
+            "localhost"
+          ]
+        },
+        {
+          "id": "q05",
+          "query": "INT8 量化后模型体积能缩小多少",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "int8",
+            "quantization-tradeoff",
+            "stepfun-open",
+            "seekdb-vector-index",
+            "rag",
+            "recall-metric",
+            "stepfun-company",
+            "web-worker",
+            "embedding-dim",
+            "sql-vector"
+          ]
+        },
+        {
+          "id": "q06",
+          "query": "FP16 与 FP32 模型体积是什么关系",
+          "recall5": 0,
+          "recall10": 0,
+          "ndcg10": 0,
+          "rr": 0,
+          "top10": [
+            "stepfun-step",
+            "int8",
+            "stepfun-company",
+            "rag",
+            "stepfun-open",
+            "web-worker",
+            "recall-metric",
+            "stepfun-multimodal",
+            "oceanbase-intro",
+            "seekdb-vector-index"
+          ]
+        },
+        {
+          "id": "q07",
+          "query": "端侧向量化对隐私有什么好处",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.52129602861432,
+          "rr": 0.5,
+          "top10": [
+            "stepfun-scene",
+            "ondevice-privacy",
+            "quantization-tradeoff",
+            "stepfun-open",
+            "seekdb-vector-index",
+            "int8",
+            "hybrid-benefit",
+            "sql-vector",
+            "oceanbase-intro",
+            "seekdb-hybrid"
+          ]
+        },
+        {
+          "id": "q08",
+          "query": "中文全文索引应该选择什么分词器",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "seekdb-fulltext",
+            "bm25",
+            "seekdb-metadata",
+            "hybrid-benefit",
+            "seekdb-collections",
+            "chunking",
+            "rag",
+            "stepfun-step",
+            "seekdb-sdk",
+            "sql-vector"
+          ]
+        },
+        {
+          "id": "q09",
+          "query": "文档切分粒度如何影响召回质量",
+          "recall5": 0.6666666666666666,
+          "recall10": 1,
+          "ndcg10": 0.9167146311087492,
+          "rr": 1,
+          "top10": [
+            "chunking",
+            "bm25",
+            "hybrid-benefit",
+            "rag",
+            "int8",
+            "recall-metric",
+            "hnsw",
+            "web-worker",
+            "seekdb-fulltext",
+            "quantization-tradeoff"
+          ]
+        },
+        {
+          "id": "q10",
+          "query": "RAG 中检索质量为什么决定回答上限",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.944847956559586,
+          "rr": 1,
+          "top10": [
+            "rag",
+            "seekdb-metadata",
+            "quantization-tradeoff",
+            "recall-metric",
+            "hybrid-benefit",
+            "webgpu",
+            "stepfun-open",
+            "web-worker",
+            "bm25",
+            "http-json"
+          ]
+        },
+        {
+          "id": "q11",
+          "query": "Recall@K 和 nDCG@K 如何计算和解读",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "recall-metric",
+            "rag",
+            "web-worker",
+            "ort-web",
+            "sql-basics",
+            "stepfun-open",
+            "hybrid-benefit",
+            "seekdb-metadata",
+            "webgpu",
+            "stepfun-step"
+          ]
+        },
+        {
+          "id": "q12",
+          "query": "阶跃星辰是一家做什么的公司",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "stepfun-company",
+            "rag",
+            "wasm",
+            "stepfun-open",
+            "hnsw",
+            "webgpu",
+            "seekdb-embedded",
+            "seekdb-fulltext",
+            "cache",
+            "chunking"
+          ]
+        },
+        {
+          "id": "q13",
+          "query": "seekdb 嵌入式模式需要单独部署数据库服务吗",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "seekdb-embedded",
+            "seekdb-server",
+            "seekdb-deployment",
+            "oceanbase-intro",
+            "nodejs",
+            "seekdb-sdk",
+            "seekdb-hybrid",
+            "seekdb-fulltext",
+            "seekdb-vector-index",
+            "vite"
+          ]
+        },
+        {
+          "id": "q14",
+          "query": "检索时怎样按文档类别进行过滤",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.944847956559586,
+          "rr": 1,
+          "top10": [
+            "seekdb-metadata",
+            "rag",
+            "http-json",
+            "sql-vector",
+            "sql-basics",
+            "seekdb-refresh",
+            "recall-metric",
+            "stepfun-step",
+            "seekdb-collections",
+            "seekdb-hybrid"
+          ]
+        },
+        {
+          "id": "q15",
+          "query": "多个知识库之间如何做数据隔离",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.52129602861432,
+          "rr": 0.5,
+          "top10": [
+            "sql-vector",
+            "seekdb-collections",
+            "rag",
+            "stepfun-multimodal",
+            "http-json",
+            "oceanbase-intro",
+            "seekdb-metadata",
+            "stepfun-open",
+            "react",
+            "seekdb-embedded"
+          ]
+        },
+        {
+          "id": "q16",
+          "query": "Transformers.js 在哪个线程运行模型推理避免卡顿",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7967075809905066,
+          "rr": 1,
+          "top10": [
+            "transformersjs",
+            "web-worker",
+            "stepfun-open",
+            "wasm",
+            "model-load",
+            "ort-web",
+            "webgpu",
+            "nodejs",
+            "stepfun-step",
+            "quantization-tradeoff"
+          ]
+        },
+        {
+          "id": "q17",
+          "query": "首次加载模型为什么比第二次慢",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7967075809905066,
+          "rr": 1,
+          "top10": [
+            "browser-cache",
+            "model-load",
+            "rag",
+            "cache",
+            "running",
+            "web-worker",
+            "stepfun-step",
+            "int8",
+            "stepfun-company",
+            "seekdb-fulltext"
+          ]
+        },
+        {
+          "id": "q18",
+          "query": "混合检索相比只用向量检索有什么优势",
+          "recall5": 0.6666666666666666,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7002755876478819,
+          "rr": 1,
+          "top10": [
+            "seekdb-hybrid",
+            "hybrid-benefit",
+            "rag",
+            "stepfun-open",
+            "sql-vector",
+            "http-json",
+            "seekdb-metadata",
+            "embedding-dim",
+            "seekdb-collections",
+            "seekdb-vector-index"
+          ]
+        },
+        {
+          "id": "q19",
+          "query": "WebGPU 不可用时如何自动选择后端",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7579237460681981,
+          "rr": 1,
+          "top10": [
+            "ort-web",
+            "wasm",
+            "webgpu",
+            "seekdb-embedded",
+            "seekdb-metadata",
+            "seekdb-server",
+            "seekdb-sdk",
+            "transformersjs",
+            "stepfun-open",
+            "stepfun-step"
+          ]
+        },
+        {
+          "id": "q20",
+          "query": "本地服务如何通过 HTTP 传递文本和向量",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.9515234565959557,
+          "rr": 1,
+          "top10": [
+            "http-json",
+            "ondevice-privacy",
+            "nodejs",
+            "sql-vector",
+            "seekdb-metadata",
+            "seekdb-server",
+            "stepfun-open",
+            "seekdb-embedded",
+            "web-worker",
+            "seekdb-vector-index"
+          ]
+        },
+        {
+          "id": "q21",
+          "query": "怎样缓存模型文件避免每次重新下载",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "browser-cache",
+            "model-load",
+            "quantization-tradeoff",
+            "cache",
+            "stepfun-step",
+            "int8",
+            "webgpu",
+            "ondevice-privacy",
+            "seekdb-embedded",
+            "seekdb-metadata"
+          ]
+        },
+        {
+          "id": "q22",
+          "query": "seekdb-js 提供哪些集合操作接口",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "seekdb-sdk",
+            "nodejs",
+            "seekdb-hybrid",
+            "seekdb-embedded",
+            "seekdb-server",
+            "oceanbase-intro",
+            "transformersjs",
+            "seekdb-fulltext",
+            "seekdb-metadata",
+            "ort-web"
+          ]
+        },
+        {
+          "id": "q23",
+          "query": "模型量化会怎样影响检索质量",
+          "recall5": 0.6666666666666666,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7002755876478819,
+          "rr": 1,
+          "top10": [
+            "int8",
+            "quantization-tradeoff",
+            "rag",
+            "stepfun-open",
+            "recall-metric",
+            "stepfun-multimodal",
+            "embedding-dim",
+            "seekdb-vector-index",
+            "sql-vector",
+            "http-json"
+          ]
+        },
+        {
+          "id": "q24",
+          "query": "浏览器端推理怎样保证界面仍然流畅",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.5296052411645183,
+          "rr": 0.5,
+          "top10": [
+            "ondevice-privacy",
+            "transformersjs",
+            "webgpu",
+            "web-worker",
+            "cache",
+            "react",
+            "browser-cache",
+            "localhost",
+            "seekdb-embedded",
+            "rag"
+          ]
+        }
+      ]
+    },
+    "fp16": {
+      "metrics": {
+        "Recall@5": 0.6875,
+        "Recall@10": 0.75,
+        "nDCG@10": 0.7556067740733375,
+        "MRR@10": 0.8958333333333334
+      },
+      "vectorFidelityVsFp32": 0.9999999581582483,
+      "timings": {
+        "loadMs": 124,
+        "documentEmbeddingMs": 539,
+        "queryEmbeddingMs": 112,
+        "documentEmbeddingMsPerDoc": 8.98
+      },
+      "batches": {
+        "documentBatchMs": [
+          209.74,
+          133.34,
+          111.99,
+          82.12
+        ],
+        "queryBatchMs": [
+          72.34,
+          38.99
+        ]
+      },
+      "perQuery": [
+        {
+          "id": "q01",
+          "query": "seekdb 如何在数据库内部完成向量和全文的混合检索",
+          "recall5": 0.3333333333333333,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7962044920938869,
+          "rr": 1,
+          "top10": [
+            "seekdb-hybrid",
+            "nodejs",
+            "seekdb-metadata",
+            "sql-vector",
+            "oceanbase-intro",
+            "seekdb-embedded",
+            "seekdb-sdk",
+            "seekdb-refresh",
+            "seekdb-vector-index",
+            "seekdb-fulltext"
+          ]
+        },
+        {
+          "id": "q02",
+          "query": "HNSW 向量索引支持哪些距离度量",
+          "recall5": 0.3333333333333333,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7962044920938869,
+          "rr": 1,
+          "top10": [
+            "seekdb-vector-index",
+            "embedding-dim",
+            "sql-vector",
+            "seekdb-hybrid",
+            "http-json",
+            "oceanbase-intro",
+            "seekdb-fulltext",
+            "web-worker",
+            "seekdb-refresh",
+            "hnsw"
+          ]
+        },
+        {
+          "id": "q03",
+          "query": "增量写入后如何让新文档立刻可以被检索到",
+          "recall5": 0.5,
+          "recall10": 1,
+          "ndcg10": 0.91311732856428,
+          "rr": 1,
+          "top10": [
+            "seekdb-refresh",
+            "rag",
+            "seekdb-metadata",
+            "seekdb-collections",
+            "sql-vector",
+            "embedding-dim",
+            "http-json",
+            "seekdb-sdk",
+            "quantization-tradeoff",
+            "stepfun-open"
+          ]
+        },
+        {
+          "id": "q04",
+          "query": "浏览器没有 WebGPU 时怎样运行嵌入模型",
+          "recall5": 0.3333333333333333,
+          "recall10": 0.3333333333333333,
+          "ndcg10": 0.24207625393180188,
+          "rr": 1,
+          "top10": [
+            "webgpu",
+            "seekdb-deployment",
+            "seekdb-embedded",
+            "transformersjs",
+            "seekdb-server",
+            "model-load",
+            "stepfun-step",
+            "nodejs",
+            "stepfun-open",
+            "localhost"
+          ]
+        },
+        {
+          "id": "q05",
+          "query": "INT8 量化后模型体积能缩小多少",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "int8",
+            "quantization-tradeoff",
+            "stepfun-open",
+            "seekdb-vector-index",
+            "rag",
+            "recall-metric",
+            "stepfun-company",
+            "web-worker",
+            "embedding-dim",
+            "sql-vector"
+          ]
+        },
+        {
+          "id": "q06",
+          "query": "FP16 与 FP32 模型体积是什么关系",
+          "recall5": 0,
+          "recall10": 0,
+          "ndcg10": 0,
+          "rr": 0,
+          "top10": [
+            "stepfun-step",
+            "int8",
+            "stepfun-company",
+            "rag",
+            "stepfun-open",
+            "web-worker",
+            "recall-metric",
+            "stepfun-multimodal",
+            "oceanbase-intro",
+            "seekdb-vector-index"
+          ]
+        },
+        {
+          "id": "q07",
+          "query": "端侧向量化对隐私有什么好处",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.52129602861432,
+          "rr": 0.5,
+          "top10": [
+            "stepfun-scene",
+            "ondevice-privacy",
+            "quantization-tradeoff",
+            "stepfun-open",
+            "seekdb-vector-index",
+            "int8",
+            "sql-vector",
+            "hybrid-benefit",
+            "oceanbase-intro",
+            "seekdb-hybrid"
+          ]
+        },
+        {
+          "id": "q08",
+          "query": "中文全文索引应该选择什么分词器",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "seekdb-fulltext",
+            "bm25",
+            "seekdb-metadata",
+            "hybrid-benefit",
+            "seekdb-collections",
+            "chunking",
+            "rag",
+            "stepfun-step",
+            "seekdb-sdk",
+            "sql-vector"
+          ]
+        },
+        {
+          "id": "q09",
+          "query": "文档切分粒度如何影响召回质量",
+          "recall5": 0.6666666666666666,
+          "recall10": 1,
+          "ndcg10": 0.9167146311087492,
+          "rr": 1,
+          "top10": [
+            "chunking",
+            "bm25",
+            "hybrid-benefit",
+            "rag",
+            "int8",
+            "recall-metric",
+            "hnsw",
+            "web-worker",
+            "seekdb-fulltext",
+            "quantization-tradeoff"
+          ]
+        },
+        {
+          "id": "q10",
+          "query": "RAG 中检索质量为什么决定回答上限",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.944847956559586,
+          "rr": 1,
+          "top10": [
+            "rag",
+            "seekdb-metadata",
+            "quantization-tradeoff",
+            "recall-metric",
+            "hybrid-benefit",
+            "webgpu",
+            "stepfun-open",
+            "web-worker",
+            "bm25",
+            "http-json"
+          ]
+        },
+        {
+          "id": "q11",
+          "query": "Recall@K 和 nDCG@K 如何计算和解读",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "recall-metric",
+            "rag",
+            "web-worker",
+            "ort-web",
+            "sql-basics",
+            "stepfun-open",
+            "hybrid-benefit",
+            "seekdb-metadata",
+            "webgpu",
+            "stepfun-step"
+          ]
+        },
+        {
+          "id": "q12",
+          "query": "阶跃星辰是一家做什么的公司",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "stepfun-company",
+            "rag",
+            "wasm",
+            "stepfun-open",
+            "hnsw",
+            "webgpu",
+            "seekdb-embedded",
+            "seekdb-fulltext",
+            "cache",
+            "chunking"
+          ]
+        },
+        {
+          "id": "q13",
+          "query": "seekdb 嵌入式模式需要单独部署数据库服务吗",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "seekdb-embedded",
+            "seekdb-server",
+            "seekdb-deployment",
+            "oceanbase-intro",
+            "nodejs",
+            "seekdb-sdk",
+            "seekdb-hybrid",
+            "seekdb-fulltext",
+            "seekdb-vector-index",
+            "vite"
+          ]
+        },
+        {
+          "id": "q14",
+          "query": "检索时怎样按文档类别进行过滤",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.944847956559586,
+          "rr": 1,
+          "top10": [
+            "seekdb-metadata",
+            "rag",
+            "http-json",
+            "sql-vector",
+            "sql-basics",
+            "seekdb-refresh",
+            "recall-metric",
+            "stepfun-step",
+            "seekdb-collections",
+            "seekdb-hybrid"
+          ]
+        },
+        {
+          "id": "q15",
+          "query": "多个知识库之间如何做数据隔离",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.52129602861432,
+          "rr": 0.5,
+          "top10": [
+            "sql-vector",
+            "seekdb-collections",
+            "rag",
+            "stepfun-multimodal",
+            "http-json",
+            "oceanbase-intro",
+            "seekdb-metadata",
+            "stepfun-open",
+            "react",
+            "seekdb-embedded"
+          ]
+        },
+        {
+          "id": "q16",
+          "query": "Transformers.js 在哪个线程运行模型推理避免卡顿",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7967075809905066,
+          "rr": 1,
+          "top10": [
+            "transformersjs",
+            "web-worker",
+            "stepfun-open",
+            "wasm",
+            "model-load",
+            "ort-web",
+            "webgpu",
+            "nodejs",
+            "stepfun-step",
+            "quantization-tradeoff"
+          ]
+        },
+        {
+          "id": "q17",
+          "query": "首次加载模型为什么比第二次慢",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7967075809905066,
+          "rr": 1,
+          "top10": [
+            "browser-cache",
+            "model-load",
+            "rag",
+            "cache",
+            "running",
+            "web-worker",
+            "stepfun-step",
+            "int8",
+            "stepfun-company",
+            "seekdb-fulltext"
+          ]
+        },
+        {
+          "id": "q18",
+          "query": "混合检索相比只用向量检索有什么优势",
+          "recall5": 0.6666666666666666,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7002755876478819,
+          "rr": 1,
+          "top10": [
+            "seekdb-hybrid",
+            "hybrid-benefit",
+            "rag",
+            "stepfun-open",
+            "sql-vector",
+            "http-json",
+            "seekdb-metadata",
+            "embedding-dim",
+            "seekdb-collections",
+            "seekdb-vector-index"
+          ]
+        },
+        {
+          "id": "q19",
+          "query": "WebGPU 不可用时如何自动选择后端",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7579237460681981,
+          "rr": 1,
+          "top10": [
+            "ort-web",
+            "wasm",
+            "webgpu",
+            "seekdb-embedded",
+            "seekdb-metadata",
+            "seekdb-server",
+            "seekdb-sdk",
+            "transformersjs",
+            "stepfun-open",
+            "stepfun-step"
+          ]
+        },
+        {
+          "id": "q20",
+          "query": "本地服务如何通过 HTTP 传递文本和向量",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.9515234565959557,
+          "rr": 1,
+          "top10": [
+            "http-json",
+            "ondevice-privacy",
+            "nodejs",
+            "sql-vector",
+            "seekdb-metadata",
+            "seekdb-server",
+            "stepfun-open",
+            "seekdb-embedded",
+            "web-worker",
+            "seekdb-vector-index"
+          ]
+        },
+        {
+          "id": "q21",
+          "query": "怎样缓存模型文件避免每次重新下载",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "browser-cache",
+            "model-load",
+            "quantization-tradeoff",
+            "cache",
+            "stepfun-step",
+            "int8",
+            "webgpu",
+            "ondevice-privacy",
+            "seekdb-embedded",
+            "seekdb-metadata"
+          ]
+        },
+        {
+          "id": "q22",
+          "query": "seekdb-js 提供哪些集合操作接口",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "seekdb-sdk",
+            "nodejs",
+            "seekdb-hybrid",
+            "seekdb-embedded",
+            "seekdb-server",
+            "oceanbase-intro",
+            "transformersjs",
+            "seekdb-fulltext",
+            "seekdb-metadata",
+            "ort-web"
+          ]
+        },
+        {
+          "id": "q23",
+          "query": "模型量化会怎样影响检索质量",
+          "recall5": 0.6666666666666666,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7002755876478819,
+          "rr": 1,
+          "top10": [
+            "int8",
+            "quantization-tradeoff",
+            "rag",
+            "stepfun-open",
+            "recall-metric",
+            "stepfun-multimodal",
+            "embedding-dim",
+            "seekdb-vector-index",
+            "sql-vector",
+            "http-json"
+          ]
+        },
+        {
+          "id": "q24",
+          "query": "浏览器端推理怎样保证界面仍然流畅",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.5296052411645183,
+          "rr": 0.5,
+          "top10": [
+            "ondevice-privacy",
+            "transformersjs",
+            "webgpu",
+            "web-worker",
+            "cache",
+            "react",
+            "browser-cache",
+            "localhost",
+            "seekdb-embedded",
+            "rag"
+          ]
+        }
+      ]
+    },
+    "int8": {
+      "metrics": {
+        "Recall@5": 0.6597222222222222,
+        "Recall@10": 0.7708333333333334,
+        "nDCG@10": 0.7549998385442521,
+        "MRR@10": 0.8726851851851851
+      },
+      "vectorFidelityVsFp32": 0.9581128587812183,
+      "timings": {
+        "loadMs": 101,
+        "documentEmbeddingMs": 267,
+        "queryEmbeddingMs": 72,
+        "documentEmbeddingMsPerDoc": 4.44
+      },
+      "batches": {
+        "documentBatchMs": [
+          106.46,
+          70.32,
+          54.95,
+          32.71
+        ],
+        "queryBatchMs": [
+          38.03,
+          32.76
+        ]
+      },
+      "perQuery": [
+        {
+          "id": "q01",
+          "query": "seekdb 如何在数据库内部完成向量和全文的混合检索",
+          "recall5": 0.3333333333333333,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.8124580632741002,
+          "rr": 1,
+          "top10": [
+            "seekdb-hybrid",
+            "oceanbase-intro",
+            "seekdb-metadata",
+            "nodejs",
+            "seekdb-refresh",
+            "seekdb-fulltext",
+            "sql-vector",
+            "seekdb-sdk",
+            "seekdb-embedded",
+            "seekdb-vector-index"
+          ]
+        },
+        {
+          "id": "q02",
+          "query": "HNSW 向量索引支持哪些距离度量",
+          "recall5": 0.6666666666666666,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.819876640193745,
+          "rr": 1,
+          "top10": [
+            "seekdb-vector-index",
+            "sql-vector",
+            "embedding-dim",
+            "oceanbase-intro",
+            "hnsw",
+            "seekdb-hybrid",
+            "web-worker",
+            "seekdb-refresh",
+            "seekdb-fulltext",
+            "http-json"
+          ]
+        },
+        {
+          "id": "q03",
+          "query": "增量写入后如何让新文档立刻可以被检索到",
+          "recall5": 0.5,
+          "recall10": 1,
+          "ndcg10": 0.9243382314975351,
+          "rr": 1,
+          "top10": [
+            "seekdb-refresh",
+            "rag",
+            "seekdb-metadata",
+            "sql-vector",
+            "seekdb-collections",
+            "seekdb-sdk",
+            "quantization-tradeoff",
+            "http-json",
+            "stepfun-open",
+            "react"
+          ]
+        },
+        {
+          "id": "q04",
+          "query": "浏览器没有 WebGPU 时怎样运行嵌入模型",
+          "recall5": 0.3333333333333333,
+          "recall10": 0.3333333333333333,
+          "ndcg10": 0.12103812696590094,
+          "rr": 0.3333333333333333,
+          "top10": [
+            "seekdb-deployment",
+            "seekdb-embedded",
+            "webgpu",
+            "seekdb-server",
+            "transformersjs",
+            "model-load",
+            "seekdb-sdk",
+            "browser-cache",
+            "nodejs",
+            "web-worker"
+          ]
+        },
+        {
+          "id": "q05",
+          "query": "INT8 量化后模型体积能缩小多少",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "int8",
+            "quantization-tradeoff",
+            "stepfun-open",
+            "seekdb-vector-index",
+            "rag",
+            "web-worker",
+            "oceanbase-intro",
+            "recall-metric",
+            "hnsw",
+            "stepfun-company"
+          ]
+        },
+        {
+          "id": "q06",
+          "query": "FP16 与 FP32 模型体积是什么关系",
+          "recall5": 0,
+          "recall10": 0,
+          "ndcg10": 0,
+          "rr": 0,
+          "top10": [
+            "stepfun-step",
+            "rag",
+            "int8",
+            "stepfun-company",
+            "stepfun-open",
+            "web-worker",
+            "oceanbase-intro",
+            "recall-metric",
+            "stepfun-multimodal",
+            "seekdb-vector-index"
+          ]
+        },
+        {
+          "id": "q07",
+          "query": "端侧向量化对隐私有什么好处",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "ondevice-privacy",
+            "stepfun-scene",
+            "quantization-tradeoff",
+            "seekdb-vector-index",
+            "stepfun-open",
+            "int8",
+            "seekdb-metadata",
+            "oceanbase-intro",
+            "seekdb-hybrid",
+            "hybrid-benefit"
+          ]
+        },
+        {
+          "id": "q08",
+          "query": "中文全文索引应该选择什么分词器",
+          "recall5": 0.5,
+          "recall10": 1,
+          "ndcg10": 0.9091417955461737,
+          "rr": 1,
+          "top10": [
+            "seekdb-fulltext",
+            "hybrid-benefit",
+            "bm25",
+            "seekdb-metadata",
+            "seekdb-collections",
+            "seekdb-sdk",
+            "rag",
+            "chunking",
+            "seekdb-hybrid",
+            "oceanbase-intro"
+          ]
+        },
+        {
+          "id": "q09",
+          "query": "文档切分粒度如何影响召回质量",
+          "recall5": 0.6666666666666666,
+          "recall10": 1,
+          "ndcg10": 0.9005687248376789,
+          "rr": 1,
+          "top10": [
+            "chunking",
+            "hybrid-benefit",
+            "bm25",
+            "int8",
+            "rag",
+            "hnsw",
+            "recall-metric",
+            "web-worker",
+            "seekdb-metadata",
+            "quantization-tradeoff"
+          ]
+        },
+        {
+          "id": "q10",
+          "query": "RAG 中检索质量为什么决定回答上限",
+          "recall5": 0.5,
+          "recall10": 1,
+          "ndcg10": 0.91311732856428,
+          "rr": 1,
+          "top10": [
+            "rag",
+            "seekdb-metadata",
+            "quantization-tradeoff",
+            "hnsw",
+            "hybrid-benefit",
+            "web-worker",
+            "seekdb-hybrid",
+            "recall-metric",
+            "bm25",
+            "webgpu"
+          ]
+        },
+        {
+          "id": "q11",
+          "query": "Recall@K 和 nDCG@K 如何计算和解读",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "recall-metric",
+            "rag",
+            "web-worker",
+            "sql-basics",
+            "stepfun-open",
+            "ort-web",
+            "hybrid-benefit",
+            "seekdb-metadata",
+            "hnsw",
+            "stepfun-step"
+          ]
+        },
+        {
+          "id": "q12",
+          "query": "阶跃星辰是一家做什么的公司",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "stepfun-company",
+            "rag",
+            "hnsw",
+            "wasm",
+            "seekdb-embedded",
+            "seekdb-server",
+            "stepfun-open",
+            "ort-web",
+            "cache",
+            "seekdb-fulltext"
+          ]
+        },
+        {
+          "id": "q13",
+          "query": "seekdb 嵌入式模式需要单独部署数据库服务吗",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "seekdb-embedded",
+            "seekdb-server",
+            "seekdb-deployment",
+            "oceanbase-intro",
+            "nodejs",
+            "seekdb-sdk",
+            "seekdb-hybrid",
+            "seekdb-fulltext",
+            "seekdb-vector-index",
+            "vite"
+          ]
+        },
+        {
+          "id": "q14",
+          "query": "检索时怎样按文档类别进行过滤",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.9327783893101107,
+          "rr": 1,
+          "top10": [
+            "seekdb-metadata",
+            "rag",
+            "seekdb-refresh",
+            "seekdb-hybrid",
+            "sql-vector",
+            "sql-basics",
+            "http-json",
+            "recall-metric",
+            "stepfun-open",
+            "seekdb-sdk"
+          ]
+        },
+        {
+          "id": "q15",
+          "query": "多个知识库之间如何做数据隔离",
+          "recall5": 0,
+          "recall10": 0.5,
+          "ndcg10": 0.24872141525284142,
+          "rr": 0.1111111111111111,
+          "top10": [
+            "sql-vector",
+            "rag",
+            "http-json",
+            "stepfun-multimodal",
+            "oceanbase-intro",
+            "react",
+            "stepfun-open",
+            "seekdb-metadata",
+            "seekdb-collections",
+            "seekdb-embedded"
+          ]
+        },
+        {
+          "id": "q16",
+          "query": "Transformers.js 在哪个线程运行模型推理避免卡顿",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7967075809905066,
+          "rr": 1,
+          "top10": [
+            "transformersjs",
+            "web-worker",
+            "model-load",
+            "wasm",
+            "browser-cache",
+            "stepfun-open",
+            "ort-web",
+            "webgpu",
+            "seekdb-sdk",
+            "nodejs"
+          ]
+        },
+        {
+          "id": "q17",
+          "query": "首次加载模型为什么比第二次慢",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7967075809905066,
+          "rr": 1,
+          "top10": [
+            "browser-cache",
+            "model-load",
+            "web-worker",
+            "rag",
+            "cache",
+            "stepfun-company",
+            "int8",
+            "transformersjs",
+            "stepfun-step",
+            "seekdb-fulltext"
+          ]
+        },
+        {
+          "id": "q18",
+          "query": "混合检索相比只用向量检索有什么优势",
+          "recall5": 0.6666666666666666,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7002755876478819,
+          "rr": 1,
+          "top10": [
+            "seekdb-hybrid",
+            "hybrid-benefit",
+            "stepfun-open",
+            "rag",
+            "sql-vector",
+            "seekdb-metadata",
+            "embedding-dim",
+            "http-json",
+            "seekdb-refresh",
+            "seekdb-collections"
+          ]
+        },
+        {
+          "id": "q19",
+          "query": "WebGPU 不可用时如何自动选择后端",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.7579237460681981,
+          "rr": 1,
+          "top10": [
+            "ort-web",
+            "wasm",
+            "webgpu",
+            "seekdb-embedded",
+            "seekdb-sdk",
+            "seekdb-server",
+            "seekdb-metadata",
+            "transformersjs",
+            "seekdb-fulltext",
+            "seekdb-hybrid"
+          ]
+        },
+        {
+          "id": "q20",
+          "query": "本地服务如何通过 HTTP 传递文本和向量",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.9515234565959557,
+          "rr": 1,
+          "top10": [
+            "http-json",
+            "ondevice-privacy",
+            "nodejs",
+            "sql-vector",
+            "stepfun-open",
+            "seekdb-embedded",
+            "seekdb-server",
+            "web-worker",
+            "seekdb-metadata",
+            "seekdb-hybrid"
+          ]
+        },
+        {
+          "id": "q21",
+          "query": "怎样缓存模型文件避免每次重新下载",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 1,
+          "rr": 1,
+          "top10": [
+            "browser-cache",
+            "model-load",
+            "quantization-tradeoff",
+            "cache",
+            "stepfun-step",
+            "int8",
+            "ondevice-privacy",
+            "seekdb-embedded",
+            "webgpu",
+            "web-worker"
+          ]
+        },
+        {
+          "id": "q22",
+          "query": "seekdb-js 提供哪些集合操作接口",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "ndcg10": 0.8262346571285599,
+          "rr": 1,
+          "top10": [
+            "seekdb-sdk",
+            "nodejs",
+            "seekdb-hybrid",
+            "seekdb-server",
+            "seekdb-embedded",
+            "oceanbase-intro",
+            "transformersjs",
+            "seekdb-fulltext",
+            "vite",
+            "webgpu"
+          ]
+        },
+        {
+          "id": "q23",
+          "query": "模型量化会怎样影响检索质量",
+          "recall5": 0.6666666666666666,
+          "recall10": 0.6666666666666666,
+          "ndcg10": 0.7002755876478819,
+          "rr": 1,
+          "top10": [
+            "int8",
+            "quantization-tradeoff",
+            "rag",
+            "stepfun-open",
+            "seekdb-vector-index",
+            "web-worker",
+            "embedding-dim",
+            "recall-metric",
+            "stepfun-multimodal",
+            "sql-vector"
+          ]
+        },
+        {
+          "id": "q24",
+          "query": "浏览器端推理怎样保证界面仍然流畅",
+          "recall5": 1,
+          "recall10": 1,
+          "ndcg10": 0.5296052411645183,
+          "rr": 0.5,
+          "top10": [
+            "ondevice-privacy",
+            "transformersjs",
+            "webgpu",
+            "web-worker",
+            "browser-cache",
+            "localhost",
+            "react",
+            "cache",
+            "seekdb-embedded",
+            "model-load"
+          ]
+        }
+      ]
+    }
+  },
+  "deltaVsFp32": {
+    "fp16": {
+      "Recall@5": 0,
+      "Recall@10": 0,
+      "nDCG@10": 0,
+      "MRR@10": 0
+    },
+    "int8": {
+      "Recall@5": -0.02777777777777779,
+      "Recall@10": 0.02083333333333337,
+      "nDCG@10": -0.0006069355290854173,
+      "MRR@10": -0.02314814814814825
+    }
+  }
+}

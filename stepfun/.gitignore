@@ -1,0 +1,15 @@
+node_modules/
+dist/
+seekdb_*/
+*.log
+.DS_Store
+.env
+.env.local
+
+# local evaluation downloads (large, fetched by scripts/fetch-models.mjs)
+public/ort/
+
+public/models/Xenova/bge-small-zh-v1.5/onnx/model.onnx
+
+# runtime benchmark raw output (keep committed snapshots in data/results)
+data/results/benchmark-live-*.json

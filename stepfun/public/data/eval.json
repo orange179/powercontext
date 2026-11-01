@@ -1,0 +1,33 @@
+{
+  "name": "seekdb-ondevice-kb-eval",
+  "version": "1.0.0",
+  "language": "zh-CN",
+  "corpus": "public/data/corpus.json",
+  "method": "人工标注的分级相关性（2=高度相关，1=部分相关）。检索质量在全部 60 篇文档上按余弦相似度排序计算 Recall@5、Recall@10、nDCG@10、MRR；量化模型与 FP32 基线使用同一语料、查询与切分。",
+  "queries": [
+    {"id":"q01","query":"seekdb 如何在数据库内部完成向量和全文的混合检索","relevant":[{"id":"seekdb-hybrid","grade":2},{"id":"hybrid-benefit","grade":1},{"id":"seekdb-fulltext","grade":1}]},
+    {"id":"q02","query":"HNSW 向量索引支持哪些距离度量","relevant":[{"id":"seekdb-vector-index","grade":2},{"id":"hnsw","grade":1},{"id":"cosine","grade":1}]},
+    {"id":"q03","query":"增量写入后如何让新文档立刻可以被检索到","relevant":[{"id":"seekdb-refresh","grade":2},{"id":"seekdb-sdk","grade":1}]},
+    {"id":"q04","query":"浏览器没有 WebGPU 时怎样运行嵌入模型","relevant":[{"id":"wasm","grade":2},{"id":"webgpu","grade":1},{"id":"ort-web","grade":1}]},
+    {"id":"q05","query":"INT8 量化后模型体积能缩小多少","relevant":[{"id":"int8","grade":2},{"id":"quantization-tradeoff","grade":1}]},
+    {"id":"q06","query":"FP16 与 FP32 模型体积是什么关系","relevant":[{"id":"fp16","grade":2},{"id":"quantization-tradeoff","grade":1}]},
+    {"id":"q07","query":"端侧向量化对隐私有什么好处","relevant":[{"id":"ondevice-privacy","grade":2},{"id":"transformersjs","grade":1}]},
+    {"id":"q08","query":"中文全文索引应该选择什么分词器","relevant":[{"id":"seekdb-fulltext","grade":2},{"id":"seekdb-hybrid","grade":1}]},
+    {"id":"q09","query":"文档切分粒度如何影响召回质量","relevant":[{"id":"chunking","grade":2},{"id":"recall-metric","grade":1},{"id":"rag","grade":1}]},
+    {"id":"q10","query":"RAG 中检索质量为什么决定回答上限","relevant":[{"id":"rag","grade":2},{"id":"recall-metric","grade":1}]},
+    {"id":"q11","query":"Recall@K 和 nDCG@K 如何计算和解读","relevant":[{"id":"recall-metric","grade":2},{"id":"chunking","grade":1}]},
+    {"id":"q12","query":"阶跃星辰是一家做什么的公司","relevant":[{"id":"stepfun-company","grade":2},{"id":"stepfun-multimodal","grade":1}]},
+    {"id":"q13","query":"seekdb 嵌入式模式需要单独部署数据库服务吗","relevant":[{"id":"seekdb-embedded","grade":2},{"id":"seekdb-deployment","grade":1},{"id":"seekdb-server","grade":1}]},
+    {"id":"q14","query":"检索时怎样按文档类别进行过滤","relevant":[{"id":"seekdb-metadata","grade":2},{"id":"sql-vector","grade":1}]},
+    {"id":"q15","query":"多个知识库之间如何做数据隔离","relevant":[{"id":"seekdb-collections","grade":2},{"id":"seekdb-deployment","grade":1}]},
+    {"id":"q16","query":"Transformers.js 在哪个线程运行模型推理避免卡顿","relevant":[{"id":"web-worker","grade":2},{"id":"transformersjs","grade":1}]},
+    {"id":"q17","query":"首次加载模型为什么比第二次慢","relevant":[{"id":"model-load","grade":2},{"id":"browser-cache","grade":1}]},
+    {"id":"q18","query":"混合检索相比只用向量检索有什么优势","relevant":[{"id":"hybrid-benefit","grade":2},{"id":"seekdb-hybrid","grade":1},{"id":"bm25","grade":1}]},
+    {"id":"q19","query":"WebGPU 不可用时如何自动选择后端","relevant":[{"id":"webgpu","grade":2},{"id":"wasm","grade":1},{"id":"ort-web","grade":1}]},
+    {"id":"q20","query":"本地服务如何通过 HTTP 传递文本和向量","relevant":[{"id":"http-json","grade":2},{"id":"nodejs","grade":1},{"id":"sql-vector","grade":1}]},
+    {"id":"q21","query":"怎样缓存模型文件避免每次重新下载","relevant":[{"id":"browser-cache","grade":2},{"id":"model-load","grade":1}]},
+    {"id":"q22","query":"seekdb-js 提供哪些集合操作接口","relevant":[{"id":"seekdb-sdk","grade":2},{"id":"seekdb-collections","grade":1}]},
+    {"id":"q23","query":"模型量化会怎样影响检索质量","relevant":[{"id":"quantization-tradeoff","grade":2},{"id":"int8","grade":1},{"id":"fp16","grade":1}]},
+    {"id":"q24","query":"浏览器端推理怎样保证界面仍然流畅","relevant":[{"id":"web-worker","grade":2},{"id":"transformersjs","grade":1}]}
+  ]
+}
